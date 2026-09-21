@@ -28,4 +28,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Nudgi"
-
+include(":core:designsystem")
+include(":core:mascot")
+include(":core:database")
