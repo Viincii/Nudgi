@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mascot_description_happy">Nudgi is smiling</string>
+    <string name="mascot_description_neutral">Nudgi is calm</string>
+    <string name="mascot_description_worried">Nudgi looks worried</string>
+</resources>
