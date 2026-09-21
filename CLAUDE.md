@@ -75,8 +75,9 @@ CI (`.github/workflows/ci.yml`) runs spotlessCheck, lintDebug, testDebugUnitTest
 
 ## Mascot
 
-Drawn in code with Compose primitives (`docs/decisions/0002`). A `MascotMood` maps to continuous `MascotFace`
-parameters that are spring-animated. Glance widgets cannot host a Compose `Canvas`, so widgets need per-mood bitmaps
+Drawn in code with Compose primitives (`docs/decisions/0002`): flat blob, pill-shaped eyes, tiny antenna, no mouth. A
+`MascotMood` maps to continuous `MascotFace` parameters that are spring-animated. Do not copy code or assets from AGPL
+projects that inspired the style. Glance widgets cannot host a Compose `Canvas`, so widgets need per-mood bitmaps
 rendered from the same drawing.
 
 ## Roadmap
