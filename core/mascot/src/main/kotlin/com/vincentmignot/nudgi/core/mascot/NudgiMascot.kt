@@ -1,20 +1,23 @@
 package com.vincentmignot.nudgi.core.mascot
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -22,27 +25,32 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import kotlin.math.max
+import kotlinx.coroutines.delay
+import kotlin.math.min
+import kotlin.random.Random
 
 private val BodyColor = Color(0xFF7BD8C4)
-private val BodyOutlineColor = Color(0xFF3E9C8A)
-private val BellyColor = Color(0xFFC8F2E8)
+private val StemColor = Color(0xFF3E9C8A)
 private val EyeColor = Color(0xFF1F2A2E)
-private val CheekColor = Color(0xFFFF9FB2)
 private val BulbColor = Color(0xFFFFD166)
 private val ShadowColor = Color(0x1F000000)
 
 private const val BOB_PERIOD_MS = 1600
-private const val BLINK_PERIOD_MS = 4200
-private const val BLINK_CLOSED_SCALE = 0.08f
+
+/** Distance of each eye from the vertical axis, in unit-square coordinates. */
+private const val EYE_OFFSET_X = 0.13f
+private const val EYE_CENTER_Y = 0.56f
+private const val EYE_BASE_WIDTH = 0.075f
+private const val EYE_BASE_HEIGHT = 0.15f
 
 /**
- * Nudgi, drawn entirely with Compose vector primitives: no bitmap or SVG asset, so it stays sharp at any size and
- * every part (mouth, eyes, antenna) can be animated on its own.
+ * Nudgi, drawn entirely with Compose vector primitives: a flat blob, two pill-shaped eyes and a tiny antenna.
+ * There is no bitmap or SVG asset, so it stays sharp at any size and every part can be animated on its own.
  */
 @Composable
 fun NudgiMascot(
@@ -57,21 +65,16 @@ fun NudgiMascot(
         animationSpec = infiniteRepeatable(tween(BOB_PERIOD_MS, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "bob",
     )
-    val blink by idle.animateFloat(
-        initialValue = 1f,
-        targetValue = 1f,
-        animationSpec =
-            infiniteRepeatable(
-                keyframes {
-                    durationMillis = BLINK_PERIOD_MS
-                    1f at 0
-                    1f at BLINK_PERIOD_MS - 300
-                    BLINK_CLOSED_SCALE at BLINK_PERIOD_MS - 200
-                    1f at BLINK_PERIOD_MS - 50
-                },
-            ),
-        label = "blink",
-    )
+    val blink = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        val random = Random.Default
+        delay(FIRST_BLINK_DELAY_MS)
+        while (true) {
+            blink.animateTo(BLINK_CLOSED_SCALE, tween(BLINK_HALF_DURATION_MS))
+            blink.animateTo(1f, tween(BLINK_HALF_DURATION_MS))
+            delay(nextBlinkDelayMillis(random))
+        }
+    }
     val description = stringResource(mood.descriptionRes())
 
     Canvas(
@@ -80,7 +83,7 @@ fun NudgiMascot(
                 .aspectRatio(1f)
                 .semantics { contentDescription = description },
     ) {
-        drawNudgi(face = face, bob = bob, blink = blink)
+        drawNudge(face = face, bob = bob, blink = blink.value)
     }
 }
 
@@ -94,21 +97,23 @@ private fun MascotMood.descriptionRes(): Int =
 @Composable
 private fun animateFace(target: MascotFace): MascotFace {
     val spec = spring<Float>(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
-    val mouthCurve by animateFloatAsState(target.mouthCurve, spec, label = "mouth")
-    val browTilt by animateFloatAsState(target.browTilt, spec, label = "brows")
-    val eyeScale by animateFloatAsState(target.eyeScale, spec, label = "eyes")
+    val eyeWidth by animateFloatAsState(target.eyeWidth, spec, label = "eye-width")
+    val eyeHeight by animateFloatAsState(target.eyeHeight, spec, label = "eye-height")
+    val eyeTilt by animateFloatAsState(target.eyeTilt, spec, label = "eye-tilt")
+    val eyeLift by animateFloatAsState(target.eyeLift, spec, label = "eye-lift")
     val antennaDroop by animateFloatAsState(target.antennaDroop, spec, label = "antenna")
-    val cheekAlpha by animateFloatAsState(target.cheekAlpha, spec, label = "cheeks")
-    return MascotFace(mouthCurve, browTilt, eyeScale, antennaDroop, cheekAlpha)
+    val bodyStretch by animateFloatAsState(target.bodyStretch, spec, label = "stretch")
+    val bodyLean by animateFloatAsState(target.bodyLean, spec, label = "lean")
+    return MascotFace(eyeWidth, eyeHeight, eyeTilt, eyeLift, antennaDroop, bodyStretch, bodyLean)
 }
 
 /**
  * Draws Nudgi in a unit square scaled to the canvas.
  *
  * @param bob 0..1 idle breathing phase.
- * @param blink 1 for open eyes down to [BLINK_CLOSED_SCALE] for a blink.
+ * @param blink 1 for open eyes down to [BLINK_CLOSED_SCALE] mid-blink.
  */
-private fun DrawScope.drawNudgi(
+private fun DrawScope.drawNudge(
     face: MascotFace,
     bob: Float,
     blink: Float,
@@ -128,23 +133,33 @@ private fun DrawScope.drawNudgi(
         size = Size(shadowWidth * s, 0.06f * s),
     )
 
+    val base = pt(0.5f, 0.88f)
+    // Squash and stretch keep the volume roughly constant.
+    val scaleY = face.bodyStretch * (1f - 0.02f * bob)
+    val scaleX = (1f + (1f - face.bodyStretch) * 0.5f) * (1f + 0.02f * bob)
     withTransform({
         translate(top = -0.03f * s * bob)
-        scale(scaleX = 1f + 0.02f * bob, scaleY = 1f - 0.02f * bob, pivot = pt(0.5f, 0.88f))
+        rotate(degrees = face.bodyLean, pivot = base)
+        scale(scaleX = scaleX, scaleY = scaleY, pivot = base)
     }) {
         drawAntenna(face.antennaDroop, bob)
-
-        drawOval(BodyColor, topLeft = pt(0.14f, 0.26f), size = Size(0.72f * s, 0.62f * s))
-        drawOval(BellyColor, topLeft = pt(0.28f, 0.5f), size = Size(0.44f * s, 0.34f * s))
-
-        val cheekAlpha = face.cheekAlpha.coerceIn(0f, 1f)
-        drawCircle(CheekColor.copy(alpha = cheekAlpha), radius = 0.05f * s, center = pt(0.27f, 0.63f))
-        drawCircle(CheekColor.copy(alpha = cheekAlpha), radius = 0.05f * s, center = pt(0.73f, 0.63f))
-
-        drawEyes(face.eyeScale, blink)
-        drawBrows(face.browTilt)
-        drawMouth(face.mouthCurve)
+        drawBody()
+        drawEyes(face, blink)
     }
+}
+
+private fun DrawScope.drawBody() {
+    val s = size.minDimension
+    val body =
+        Path().apply {
+            moveTo(0.5f * s, 0.26f * s)
+            cubicTo(0.72f * s, 0.26f * s, 0.87f * s, 0.42f * s, 0.87f * s, 0.62f * s)
+            cubicTo(0.87f * s, 0.8f * s, 0.72f * s, 0.88f * s, 0.5f * s, 0.88f * s)
+            cubicTo(0.28f * s, 0.88f * s, 0.13f * s, 0.8f * s, 0.13f * s, 0.62f * s)
+            cubicTo(0.13f * s, 0.42f * s, 0.28f * s, 0.26f * s, 0.5f * s, 0.26f * s)
+            close()
+        }
+    drawPath(body, BodyColor)
 }
 
 private fun DrawScope.drawAntenna(
@@ -152,67 +167,39 @@ private fun DrawScope.drawAntenna(
     bob: Float,
 ) {
     val s = size.minDimension
-    val sway = (bob - 0.5f) * 0.03f
-    val base = Offset(0.5f * s, 0.27f * s)
-    val tip = Offset((0.5f + 0.12f * droop + sway) * s, (0.1f + 0.1f * droop) * s)
+    val sway = (bob - 0.5f) * 0.02f
+    val base = Offset(0.5f * s, 0.28f * s)
+    val tip = Offset((0.5f + 0.07f * droop + sway) * s, (0.19f + 0.05f * droop) * s)
     val stem =
         Path().apply {
             moveTo(base.x, base.y)
-            quadraticTo(0.5f * s, 0.17f * s, tip.x, tip.y)
+            quadraticTo(0.5f * s, 0.22f * s, tip.x, tip.y)
         }
-    drawPath(stem, BodyOutlineColor, style = Stroke(width = 0.02f * s, cap = StrokeCap.Round))
+    drawPath(stem, StemColor, style = Stroke(width = 0.016f * s, cap = StrokeCap.Round))
     // The bulb dims as the antenna droops.
-    drawCircle(BulbColor.copy(alpha = 0.3f * (1f - droop)), radius = 0.075f * s, center = tip)
-    drawCircle(BulbColor, radius = 0.045f * s, center = tip)
+    drawCircle(BulbColor.copy(alpha = 0.3f * (1f - droop)), radius = 0.055f * s, center = tip)
+    drawCircle(BulbColor, radius = 0.032f * s, center = tip)
 }
 
 private fun DrawScope.drawEyes(
-    eyeScale: Float,
+    face: MascotFace,
     blink: Float,
 ) {
     val s = size.minDimension
-    val radiusX = 0.04f * eyeScale * s
-    val radiusY = radiusX * 1.25f * max(blink, BLINK_CLOSED_SCALE)
-    listOf(0.38f, 0.62f).forEach { centerX ->
-        val center = Offset(centerX * s, 0.5f * s)
-        drawOval(EyeColor, topLeft = center - Offset(radiusX, radiusY), size = Size(radiusX * 2, radiusY * 2))
-        if (blink > 0.5f) {
-            drawCircle(Color.White, radius = 0.012f * s, center = center + Offset(0.012f * s, -0.014f * s))
+    val width = EYE_BASE_WIDTH * face.eyeWidth * s
+    val height = EYE_BASE_HEIGHT * face.eyeHeight * blink * s
+    val centerY = (EYE_CENTER_Y + face.eyeLift) * s
+    val radius = CornerRadius(min(width, height) / 2)
+    // The left eye tips clockwise for a positive tilt, the right one counter-clockwise, so the tops move together.
+    listOf(-1f to face.eyeTilt, 1f to -face.eyeTilt).forEach { (side, degrees) ->
+        val center = Offset((0.5f + side * EYE_OFFSET_X) * s, centerY)
+        rotate(degrees = degrees, pivot = center) {
+            drawRoundRect(
+                color = EyeColor,
+                topLeft = center - Offset(width / 2, height / 2),
+                size = Size(width, height),
+                cornerRadius = radius,
+            )
         }
     }
-}
-
-private fun DrawScope.drawBrows(tilt: Float) {
-    val alpha = tilt.coerceIn(0f, 1f)
-    if (alpha <= 0f) return
-    val s = size.minDimension
-    val color = EyeColor.copy(alpha = alpha)
-    val stroke = Stroke(width = 0.014f * s, cap = StrokeCap.Round)
-    val innerY = 0.43f - 0.05f * tilt
-    drawPath(
-        Path().apply {
-            moveTo(0.3f * s, 0.43f * s)
-            lineTo(0.44f * s, innerY * s)
-        },
-        color,
-        style = stroke,
-    )
-    drawPath(
-        Path().apply {
-            moveTo(0.56f * s, innerY * s)
-            lineTo(0.7f * s, 0.43f * s)
-        },
-        color,
-        style = stroke,
-    )
-}
-
-private fun DrawScope.drawMouth(curve: Float) {
-    val s = size.minDimension
-    val mouth =
-        Path().apply {
-            moveTo(0.43f * s, 0.64f * s)
-            quadraticTo(0.5f * s, (0.64f + 0.1f * curve) * s, 0.57f * s, 0.64f * s)
-        }
-    drawPath(mouth, EyeColor, style = Stroke(width = 0.016f * s, cap = StrokeCap.Round))
 }
