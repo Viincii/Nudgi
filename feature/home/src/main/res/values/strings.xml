@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_title">Nudgi</string>
+    <string name="home_message_happy">Doing great today!</string>
+    <string name="home_message_neutral">Just keeping you company.</string>
+    <string name="home_message_worried">Hey, maybe time for a break?</string>
+    <string name="home_debug_mood_picker">Preview mood</string>
+    <string name="home_mood_happy">Happy</string>
+    <string name="home_mood_neutral">Neutral</string>
+    <string name="home_mood_worried">Worried</string>
+</resources>
