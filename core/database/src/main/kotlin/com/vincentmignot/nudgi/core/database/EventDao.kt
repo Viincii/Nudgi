@@ -10,6 +10,9 @@ interface EventDao {
     @Insert
     suspend fun insert(event: EventEntity): Long
 
+    @Insert
+    suspend fun insertAll(events: List<EventEntity>)
+
     @Query("SELECT * FROM events WHERE timestamp BETWEEN :startInclusive AND :endExclusive ORDER BY timestamp")
     fun observeBetween(
         startInclusive: Long,

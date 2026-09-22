@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.nudgi.android.library)
     alias(libs.plugins.nudgi.android.room)
+    alias(libs.plugins.nudgi.android.hilt)
 }
 
 android {
