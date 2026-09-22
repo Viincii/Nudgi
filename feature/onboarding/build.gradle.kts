@@ -12,6 +12,7 @@ android {
 
 dependencies {
     implementation(project(":core:accessibility"))
+    implementation(project(":core:usagestats"))
 
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)

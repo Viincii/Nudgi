@@ -1,4 +1,4 @@
-package com.vincentmignot.nudgi.feature.onboarding
+package com.vincentmignot.nudgi.core.usagestats
 
 import android.app.AppOpsManager
 import android.content.Context
