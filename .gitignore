@@ -29,6 +29,8 @@ replay_pid*
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+# Local daemon JVM toolchain pin, machine-specific
+gradle/gradle-daemon-jvm.properties
 
 # Android
 local.properties
