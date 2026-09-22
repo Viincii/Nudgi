@@ -32,6 +32,7 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:mascot` | `NudgiMascot`, `MascotMood`, `MascotFace` | nothing |
 | `core:database` | Room database (`events`, `daily_stats`) | nothing |
 | `core:accessibility` | `NudgiAccessibilityService` (stub), permission check | nothing |
+| `core:usagestats` | `UsageStatsManager` polling into `events` via `WorkManager` | `core:database` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
 | `build-logic` | Convention plugins (`nudgi.android.*`) | n/a |
 
@@ -94,5 +95,6 @@ rendered from the same drawing.
 
 ## Next up
 
-- `UsageStatsManager` polling, now that the guided permission flow and the `events`/`daily_stats` Room schema
-  are both in place.
+- Aggregate `events` into `daily_stats` with a periodic `WorkManager` job, now that raw polling
+  (`core:usagestats`) is writing to the `events` table.
+- Sideload a debug build onto the Nothing Phone (1) to start collecting real usage data.
