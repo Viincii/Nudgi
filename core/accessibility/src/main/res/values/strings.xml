@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Nudgi uses this to notice which app is in the foreground, so it can later step in with a nudge or a friction screen. It does not read screen content and nothing leaves your device.</string>
+</resources>
