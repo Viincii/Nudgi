@@ -3,6 +3,7 @@ package com.vincentmignot.nudgi.feature.onboarding
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.vincentmignot.nudgi.core.accessibility.isAccessibilityServiceEnabled
+import com.vincentmignot.nudgi.core.usagestats.isUsageAccessGranted
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow

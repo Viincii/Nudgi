@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.vincentmignot.nudgi.core.accessibility.isAccessibilityServiceEnabled
+import com.vincentmignot.nudgi.core.usagestats.isUsageAccessGranted
 
 const val ONBOARDING_ROUTE = "onboarding"
 
