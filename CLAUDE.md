@@ -31,6 +31,7 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:designsystem` | Theme (`NudgiTheme`), shared UI | nothing |
 | `core:mascot` | `NudgiMascot`, `MascotMood`, `MascotFace` | nothing |
 | `core:database` | Room database (`events`, `daily_stats`) | nothing |
+| `core:accessibility` | `NudgiAccessibilityService` (stub), permission check | nothing |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
 | `build-logic` | Convention plugins (`nudgi.android.*`) | n/a |
 
@@ -93,6 +94,5 @@ rendered from the same drawing.
 
 ## Next up
 
-- Room schema (`events`, `daily_stats`) with tests.
-- Guided permission flow (usage access, accessibility): there is no runtime dialog, users must be sent to system
-  settings. Then the `UsageStatsManager` polling.
+- `UsageStatsManager` polling, now that the guided permission flow and the `events`/`daily_stats` Room schema
+  are both in place.

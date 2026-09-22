@@ -1,10 +1,9 @@
 plugins {
     alias(libs.plugins.nudgi.android.library)
-    alias(libs.plugins.nudgi.android.room)
 }
 
 android {
-    namespace = "com.vincentmignot.nudgi.core.database"
+    namespace = "com.vincentmignot.nudgi.core.accessibility"
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -12,7 +11,6 @@ android {
 }
 
 dependencies {
-    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }

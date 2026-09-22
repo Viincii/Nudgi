@@ -57,7 +57,7 @@ fun NudgiMascot(
     mood: MascotMood,
     modifier: Modifier = Modifier,
 ) {
-    val face = animateFace(mood.toFace())
+    val face = animateFace(mood.face)
     val idle = rememberInfiniteTransition(label = "nudgi-idle")
     val bob by idle.animateFloat(
         initialValue = 0f,
@@ -75,7 +75,7 @@ fun NudgiMascot(
             delay(nextBlinkDelayMillis(random))
         }
     }
-    val description = stringResource(mood.descriptionRes())
+    val description = stringResource(mood.descriptionRes)
 
     Canvas(
         modifier =
@@ -86,13 +86,6 @@ fun NudgiMascot(
         drawNudge(face = face, bob = bob, blink = blink.value)
     }
 }
-
-private fun MascotMood.descriptionRes(): Int =
-    when (this) {
-        MascotMood.Happy -> R.string.mascot_description_happy
-        MascotMood.Neutral -> R.string.mascot_description_neutral
-        MascotMood.Worried -> R.string.mascot_description_worried
-    }
 
 @Composable
 private fun animateFace(target: MascotFace): MascotFace {

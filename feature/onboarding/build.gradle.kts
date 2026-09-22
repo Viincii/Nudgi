@@ -1,10 +1,9 @@
 plugins {
-    alias(libs.plugins.nudgi.android.library)
-    alias(libs.plugins.nudgi.android.room)
+    alias(libs.plugins.nudgi.android.feature)
 }
 
 android {
-    namespace = "com.vincentmignot.nudgi.core.database"
+    namespace = "com.vincentmignot.nudgi.feature.onboarding"
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -12,6 +11,8 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:accessibility"))
+
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)

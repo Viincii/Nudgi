@@ -7,7 +7,7 @@ import org.junit.Test
 class MascotFaceTest {
     @Test
     fun `happy stands tall with its antenna up and eyes tipped apart`() {
-        val face = MascotMood.Happy.toFace()
+        val face = MascotMood.Happy.face
 
         assertTrue(face.bodyStretch > 1f)
         assertEquals(0f, face.antennaDroop, 0f)
@@ -16,7 +16,7 @@ class MascotFaceTest {
 
     @Test
     fun `worried slumps with its antenna down and eyes tipped together`() {
-        val face = MascotMood.Worried.toFace()
+        val face = MascotMood.Worried.face
 
         assertTrue(face.bodyStretch < 1f)
         assertEquals(1f, face.antennaDroop, 0f)
@@ -26,7 +26,7 @@ class MascotFaceTest {
 
     @Test
     fun `neutral rests at the reference pose`() {
-        val face = MascotMood.Neutral.toFace()
+        val face = MascotMood.Neutral.face
 
         assertEquals(1f, face.bodyStretch, 0f)
         assertEquals(0f, face.eyeTilt, 0f)
@@ -35,9 +35,9 @@ class MascotFaceTest {
 
     @Test
     fun `antenna droop grows from happy to neutral to worried`() {
-        val happy = MascotMood.Happy.toFace().antennaDroop
-        val neutral = MascotMood.Neutral.toFace().antennaDroop
-        val worried = MascotMood.Worried.toFace().antennaDroop
+        val happy = MascotMood.Happy.face.antennaDroop
+        val neutral = MascotMood.Neutral.face.antennaDroop
+        val worried = MascotMood.Worried.face.antennaDroop
 
         assertTrue(happy < neutral && neutral < worried)
     }
@@ -45,7 +45,7 @@ class MascotFaceTest {
     @Test
     fun `every mood stays within the drawable ranges`() {
         MascotMood.entries.forEach { mood ->
-            val face = mood.toFace()
+            val face = mood.face
 
             assertTrue("$mood eyeWidth", face.eyeWidth > 0f)
             assertTrue("$mood eyeHeight", face.eyeHeight > 0f)
