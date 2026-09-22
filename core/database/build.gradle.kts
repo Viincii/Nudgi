@@ -5,4 +5,14 @@ plugins {
 
 android {
     namespace = "com.vincentmignot.nudgi.core.database"
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+dependencies {
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }
