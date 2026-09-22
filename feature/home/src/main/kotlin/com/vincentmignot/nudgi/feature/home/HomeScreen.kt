@@ -74,7 +74,7 @@ internal fun HomeScreen(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = stringResource(uiState.mood.messageRes()),
+                    text = stringResource(homeContent(uiState.mood).messageRes),
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                 )
@@ -102,27 +102,23 @@ private fun MoodPicker(
                     onClick = { onMoodSelected(mood) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = MascotMood.entries.size),
                 ) {
-                    Text(stringResource(mood.labelRes()))
+                    Text(stringResource(homeContent(mood).labelRes))
                 }
             }
         }
     }
 }
 
-@StringRes
-private fun MascotMood.messageRes(): Int =
-    when (this) {
-        MascotMood.Happy -> R.string.home_message_happy
-        MascotMood.Neutral -> R.string.home_message_neutral
-        MascotMood.Worried -> R.string.home_message_worried
-    }
+private data class HomeMoodContent(
+    @StringRes val messageRes: Int,
+    @StringRes val labelRes: Int,
+)
 
-@StringRes
-private fun MascotMood.labelRes(): Int =
-    when (this) {
-        MascotMood.Happy -> R.string.home_mood_happy
-        MascotMood.Neutral -> R.string.home_mood_neutral
-        MascotMood.Worried -> R.string.home_mood_worried
+private fun homeContent(mood: MascotMood): HomeMoodContent =
+    when (mood) {
+        MascotMood.Happy -> HomeMoodContent(R.string.home_message_happy, R.string.home_mood_happy)
+        MascotMood.Neutral -> HomeMoodContent(R.string.home_message_neutral, R.string.home_mood_neutral)
+        MascotMood.Worried -> HomeMoodContent(R.string.home_message_worried, R.string.home_mood_worried)
     }
 
 @Preview(showBackground = true)
