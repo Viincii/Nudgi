@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 private class FakeEventDao : EventDao {
@@ -129,12 +130,25 @@ class NudgeEvaluatorTest {
         }
 
     @Test
+    fun `returns when to evaluate again`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+
+            val beforeThreshold = evaluator.evaluate(now = sessionStart + 5 * MINUTE_MS, zone = PARIS)
+            val afterNudge = evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(sessionStart + 20 * MINUTE_MS, beforeThreshold)
+            assertEquals(sessionStart + 35 * MINUTE_MS, afterNudge)
+        }
+
+    @Test
     fun `records nothing for an unwatched app`() =
         runTest {
             eventDao.insert(foreground(sessionStart, packageName = OTHER))
 
-            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+            val next = evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
 
             assertEquals(1, eventDao.events.size)
+            assertNull(next)
         }
 }

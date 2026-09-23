@@ -37,24 +37,52 @@ class NudgeEvaluator
         private val holdoutDraw: HoldoutDraw,
         private val config: NudgeConfig,
     ) {
+        /**
+         * Returns when the rules should next be evaluated if the user stays in the current app, or
+         * null when no watched app is in the foreground or nothing more can fire today.
+         */
         suspend fun evaluate(
             now: Long = System.currentTimeMillis(),
             zone: ZoneId = ZoneId.systemDefault(),
-        ) {
+        ): Long? {
             val events = eventDao.since(now - HISTORY_MS)
 
             val outcomes = pendingOutcomeEvents(events, now, config)
             if (outcomes.isNotEmpty()) eventDao.insertAll(outcomes)
 
-            val context = buildNudgeContext(events, now, zone, watchedApps::isWatched, config) ?: return
+            val context = buildNudgeContext(events, now, zone, watchedApps::isWatched, config) ?: return null
             var decision = decideNudge(context, config, holdoutDraw.next())
             if (decision is NudgeDecision.Show && !notifier.canNotify()) {
                 decision = NudgeDecision.Suppress(decision.candidate, SuppressionReason.NotificationsDisabled)
             }
-            if (decision == NudgeDecision.None) return
+            if (decision == NudgeDecision.None) return nextEvaluationAt(context, config, zone)
 
             val nudgeId = UUID.randomUUID().toString()
             eventDao.insert(decisionEvent(decision, context, config, nudgeId))
             if (decision is NudgeDecision.Show) notifier.show(nudgeId, decision.candidate, context)
+            return nextEvaluationAt(context.including(decision, nudgeId), config, zone)
         }
     }
+
+/** [this] context as it will look once [decision] is recorded, for scheduling what comes next. */
+private fun NudgeContext.including(
+    decision: NudgeDecision,
+    nudgeId: String,
+): NudgeContext {
+    val (candidate, shown) =
+        when (decision) {
+            is NudgeDecision.Show -> {
+                decision.candidate to true
+            }
+
+            is NudgeDecision.Suppress -> {
+                if (decision.reason == SuppressionReason.Holdout) decision.candidate to false else return this
+            }
+
+            NudgeDecision.None -> {
+                return this
+            }
+        }
+    val decided = PastNudge(nudgeId, now, packageName, candidate.rule, candidate.level, shown)
+    return copy(pastNudges = pastNudges + decided)
+}
