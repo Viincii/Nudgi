@@ -38,3 +38,7 @@ for the one moment a nudge can help. The accessibility service was already grant
 - The schedule lives in memory. If the process dies while a watched app is open, the worker takes over until the
   next foreground change.
 - The home screen is an ordinary foreground change: leaving a watched app for it stops the schedule.
+- Testing tools that drive the UI through `UiAutomation` (`uiautomator dump`, or an agent's screen inspection)
+  make Android unbind every other accessibility service while they are connected. On an emulator under such a
+  tool, the service shows as enabled but not bound (`dumpsys accessibility`), and real-time nudges silently stop.
+  This is not a bug in the app. Stop the tool to test the trigger.

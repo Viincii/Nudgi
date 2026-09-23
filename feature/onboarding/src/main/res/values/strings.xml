@@ -5,7 +5,7 @@
     <string name="onboarding_usage_access_title">Usage access</string>
     <string name="onboarding_usage_access_description">Lets Nudgi see which apps you use and for how long, entirely on this device.</string>
     <string name="onboarding_accessibility_title">Accessibility</string>
-    <string name="onboarding_accessibility_description">Lets Nudgi notice which app is in front, so it can step in later with a nudge or a friction screen.</string>
+    <string name="onboarding_accessibility_description">Lets Nudgi notice which app is in front, so a nudge comes right when it\'s due rather than minutes later.</string>
     <string name="onboarding_notifications_title">Notifications</string>
     <string name="onboarding_notifications_description">Nudges reach you as notifications. Without them, Nudgi can only watch.</string>
     <string name="onboarding_permission_granted">Granted</string>
