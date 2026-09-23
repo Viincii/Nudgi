@@ -14,9 +14,11 @@ class UsagePollingWorker
         @Assisted context: Context,
         @Assisted params: WorkerParameters,
         private val poller: UsageStatsPoller,
+        private val aggregator: DailyStatsAggregator,
     ) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result {
-            poller.poll()
+            val windowStart = poller.poll() ?: return Result.success()
+            aggregator.aggregateSince(windowStart)
             return Result.success()
         }
     }
