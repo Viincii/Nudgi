@@ -19,6 +19,9 @@ interface EventDao {
         endExclusive: Long,
     ): Flow<List<EventEntity>>
 
+    @Query("SELECT * FROM events WHERE timestamp >= :sinceInclusive ORDER BY timestamp, id")
+    suspend fun since(sinceInclusive: Long): List<EventEntity>
+
     @Query("SELECT * FROM events WHERE event_type = :eventType AND timestamp >= :sinceInclusive ORDER BY timestamp")
     suspend fun ofTypeSince(
         eventType: String,
