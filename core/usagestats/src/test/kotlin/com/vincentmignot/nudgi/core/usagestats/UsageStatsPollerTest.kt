@@ -97,8 +97,36 @@ class UsageStatsPollerTest {
                     permissionChecker = UsageAccessPermissionChecker { true },
                 )
 
-            poller.poll(now = 20 * 60 * 1000L)
+            val now = 20 * 60 * 1000L
+            val windowStart = poller.poll(now = now)
 
-            assertEquals(5 * 60 * 1000L, queriedStart)
+            assertEquals(5 * 60 * 1000L, windowStart)
+            assertEquals(5 * 60 * 1000L - SESSION_LOOKBACK_MS, queriedStart)
+        }
+
+    @Test
+    fun `pairs a background event with a foreground event from the previous window`() =
+        runTest {
+            val windowStart = SESSION_LOOKBACK_MS
+            val pollState = FakePollState(lastPolledUntil = windowStart)
+            val rawEvents =
+                listOf(
+                    RawUsageEvent(
+                        timestamp = windowStart - 60_000,
+                        packageName = "com.example.app",
+                        type = UsageEventType.Foreground,
+                    ),
+                    RawUsageEvent(
+                        timestamp = windowStart + 30_000,
+                        packageName = "com.example.app",
+                        type = UsageEventType.Background,
+                    ),
+                )
+
+            poller(rawEvents = rawEvents, pollState = pollState).poll(now = windowStart + 60_000)
+
+            assertEquals(1, eventDao.inserted.size)
+            assertEquals(EVENT_TYPE_APP_BACKGROUND, eventDao.inserted[0].eventType)
+            assertEquals(90_000L, eventDao.inserted[0].durationMs)
         }
 }
