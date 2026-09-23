@@ -27,6 +27,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":core:accessibility"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:nudge"))
     implementation(project(":core:usagestats"))
@@ -38,4 +39,6 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }
