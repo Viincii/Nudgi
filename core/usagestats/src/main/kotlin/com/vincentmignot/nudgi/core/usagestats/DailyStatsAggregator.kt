@@ -2,6 +2,7 @@ package com.vincentmignot.nudgi.core.usagestats
 
 import com.vincentmignot.nudgi.core.database.DailyStatsDao
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
 import com.vincentmignot.nudgi.core.database.EventDao
 import java.time.ZoneId
 import javax.inject.Inject
