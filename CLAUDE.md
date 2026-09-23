@@ -27,12 +27,13 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 
 | Module | Role | May depend on |
 |---|---|---|
-| `app` | Entry point, `@HiltAndroidApp`, wiring | everything |
+| `app` | Entry point, `@HiltAndroidApp`, wiring, the periodic usage pipeline | everything |
 | `core:designsystem` | Theme (`NudgiTheme`), shared UI | nothing |
 | `core:mascot` | `NudgiMascot`, `MascotMood`, `MascotFace` | nothing |
 | `core:database` | Room database (`events`, `daily_stats`) | nothing |
 | `core:accessibility` | `NudgiAccessibilityService` (stub), permission check | nothing |
-| `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats`, via `WorkManager` | `core:database` |
+| `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats` | `core:database` |
+| `core:nudge` | Rule-based nudges: rules, notification, nudge events | `core:database`, `core:usagestats` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
 | `build-logic` | Convention plugins (`nudgi.android.*`) | n/a |
 
@@ -95,6 +96,5 @@ rendered from the same drawing.
 
 ## Next up
 
-- Sideload a debug build onto the Nothing Phone (1) to start collecting real usage data (`events` and
-  `daily_stats` are now both filled by the polling worker).
-- Define the rule-based nudge logic and record nudges as events, so `daily_stats.nudge_count` can be computed.
+- Trigger nudges in real time from the accessibility service instead of waiting for the next 15-minute poll.
+- Sideload a debug build onto the Nothing Phone (1) to start collecting real usage and nudge data.
