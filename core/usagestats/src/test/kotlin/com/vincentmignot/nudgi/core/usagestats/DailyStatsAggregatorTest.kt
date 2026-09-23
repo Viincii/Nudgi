@@ -3,6 +3,7 @@ package com.vincentmignot.nudgi.core.usagestats
 import com.vincentmignot.nudgi.core.database.DailyStatsDao
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SHOWN
 import com.vincentmignot.nudgi.core.database.EventEntity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -67,6 +68,21 @@ class DailyStatsAggregatorTest {
         )
     }
 
+    private suspend fun nudgeShown(
+        packageName: String,
+        at: String,
+    ) {
+        eventDao.insert(
+            EventEntity(
+                timestamp = at(at),
+                eventType = EVENT_TYPE_NUDGE_SHOWN,
+                packageName = packageName,
+                durationMs = 0,
+                metadata = "{}",
+            ),
+        )
+    }
+
     private fun usage(
         date: String,
         packageName: String,
@@ -81,7 +97,6 @@ class DailyStatsAggregatorTest {
             aggregator.aggregateSince(at("2026-09-22T14:00:00"), zone)
 
             assertEquals(15 * 60_000L, usage("2026-09-22", "com.example.app"))
-            assertEquals(0, dailyStatsDao.rows.getValue("2026-09-22" to "com.example.app").nudgeCount)
         }
 
     @Test
@@ -128,5 +143,30 @@ class DailyStatsAggregatorTest {
             aggregator.aggregateSince(at("2026-09-22T12:00:00"), zone)
 
             assertEquals(emptyMap<Pair<String, String>, DailyStatsEntity>(), dailyStatsDao.rows)
+        }
+
+    @Test
+    fun `counts the nudges shown per day and app`() =
+        runTest {
+            session("com.example.app", start = "2026-09-22T09:00:00", end = "2026-09-22T09:30:00")
+            nudgeShown("com.example.app", at = "2026-09-22T09:20:00")
+            nudgeShown("com.example.app", at = "2026-09-22T09:25:00")
+
+            aggregator.aggregateSince(at("2026-09-22T09:00:00"), zone)
+
+            assertEquals(2, dailyStatsDao.rows.getValue("2026-09-22" to "com.example.app").nudgeCount)
+        }
+
+    @Test
+    fun `a nudge alone is enough to recompute its day`() =
+        runTest {
+            session("com.example.app", start = "2026-09-22T09:00:00", end = "2026-09-22T09:30:00")
+            nudgeShown("com.example.app", at = "2026-09-22T11:00:00")
+
+            aggregator.aggregateSince(at("2026-09-22T10:00:00"), zone)
+
+            val row = dailyStatsDao.rows.getValue("2026-09-22" to "com.example.app")
+            assertEquals(30 * 60_000L, row.usageMs)
+            assertEquals(1, row.nudgeCount)
         }
 }
