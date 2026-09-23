@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nudge_channel_name">Nudges</string>
+    <string name="nudge_channel_description">Nudgi stepping in when you have been scrolling for a while.</string>
+    <string name="nudge_title">Hey, it\'s Nudgi</string>
+    <string name="nudge_long_session">%2$d minutes on %1$s in a row. Time for a break?</string>
+    <string name="nudge_daily_budget">%2$d minutes on %1$s today already.</string>
+    <string name="nudge_late_night">It\'s getting late. Maybe put %1$s down for tonight?</string>
+    <string name="nudge_snooze_followup">Your five more minutes on %1$s are up.</string>
+    <string name="nudge_action_stop">I\'ll stop</string>
+    <string name="nudge_action_snooze">5 more minutes</string>
+</resources>

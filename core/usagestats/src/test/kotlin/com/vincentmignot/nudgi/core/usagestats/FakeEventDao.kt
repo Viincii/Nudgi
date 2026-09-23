@@ -22,6 +22,9 @@ class FakeEventDao : EventDao {
         endExclusive: Long,
     ): Flow<List<EventEntity>> = flowOf(inserted.filter { it.timestamp in startInclusive until endExclusive })
 
+    override suspend fun since(sinceInclusive: Long): List<EventEntity> =
+        inserted.filter { it.timestamp >= sinceInclusive }.sortedBy { it.timestamp }
+
     override suspend fun ofTypeSince(
         eventType: String,
         sinceInclusive: Long,

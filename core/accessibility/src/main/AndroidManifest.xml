@@ -2,11 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application>
-        <!--
-            Does nothing yet: it exists so the onboarding flow can request and verify the
-            permission ahead of the app-blocking work (roadmap step 4), which is what will give
-            it real event handling.
-        -->
+        <!-- Reports foreground app changes; see NudgiAccessibilityService. -->
         <service
             android:name=".NudgiAccessibilityService"
             android:exported="true"

@@ -1,9 +1,8 @@
 package com.vincentmignot.nudgi.core.usagestats
 
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_FOREGROUND
 import com.vincentmignot.nudgi.core.database.EventEntity
-
-const val EVENT_TYPE_APP_FOREGROUND = "app_foreground"
-const val EVENT_TYPE_APP_BACKGROUND = "app_background"
 
 /**
  * Maps chronologically-ordered [rawEvents] to [EventEntity] rows. A background event gets the

@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.usagestats
 
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
 import com.vincentmignot.nudgi.core.database.EventEntity
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

@@ -1,5 +1,7 @@
 package com.vincentmignot.nudgi.core.usagestats
 
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_FOREGROUND
 import com.vincentmignot.nudgi.core.database.EventEntity
 import org.junit.Assert.assertEquals
 import org.junit.Test

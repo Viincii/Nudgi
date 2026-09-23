@@ -1,7 +1,12 @@
 package com.vincentmignot.nudgi.feature.onboarding
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,12 +58,37 @@ fun OnboardingRoute(
         if (uiState.isComplete) onOnboardingComplete()
     }
 
-    OnboardingScreen(uiState = uiState, modifier = modifier)
+    val context = LocalContext.current
+    // Once denied twice, Android stops showing the dialog and the request fails at once, so a
+    // refusal falls back to the app's notification settings.
+    val notificationPermission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) viewModel.refresh() else openNotificationSettings(context)
+        }
+
+    OnboardingScreen(
+        uiState = uiState,
+        onEnableNotifications = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                openNotificationSettings(context)
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+private fun openNotificationSettings(context: Context) {
+    context.startActivity(
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
+    )
 }
 
 @Composable
 internal fun OnboardingScreen(
     uiState: OnboardingUiState,
+    onEnableNotifications: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -86,6 +116,13 @@ internal fun OnboardingScreen(
                 granted = uiState.hasAccessibilityAccess,
                 onOpenSettings = { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
             )
+            PermissionCard(
+                title = stringResource(R.string.onboarding_notifications_title),
+                description = stringResource(R.string.onboarding_notifications_description),
+                granted = uiState.hasNotifications,
+                actionLabel = stringResource(R.string.onboarding_allow),
+                onOpenSettings = onEnableNotifications,
+            )
         }
     }
 }
@@ -97,6 +134,7 @@ private fun PermissionCard(
     granted: Boolean,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    actionLabel: String = stringResource(R.string.onboarding_open_settings),
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -110,7 +148,7 @@ private fun PermissionCard(
                 )
             } else {
                 Button(onClick = onOpenSettings) {
-                    Text(stringResource(R.string.onboarding_open_settings))
+                    Text(actionLabel)
                 }
             }
         }
@@ -121,7 +159,7 @@ private fun PermissionCard(
 @Composable
 private fun OnboardingScreenPreview() {
     NudgiTheme {
-        OnboardingScreen(uiState = OnboardingUiState())
+        OnboardingScreen(uiState = OnboardingUiState(), onEnableNotifications = {})
     }
 }
 
@@ -129,6 +167,6 @@ private fun OnboardingScreenPreview() {
 @Composable
 private fun OnboardingScreenPartiallyGrantedPreview() {
     NudgiTheme {
-        OnboardingScreen(uiState = OnboardingUiState(hasUsageAccess = true))
+        OnboardingScreen(uiState = OnboardingUiState(hasUsageAccess = true), onEnableNotifications = {})
     }
 }

@@ -12,6 +12,7 @@ android {
 
 dependencies {
     implementation(project(":core:accessibility"))
+    implementation(project(":core:nudge"))
     implementation(project(":core:usagestats"))
 
     testImplementation(libs.kotlinx.coroutines.test)

@@ -3,7 +3,7 @@ package com.vincentmignot.nudgi
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.vincentmignot.nudgi.core.usagestats.schedulePeriodicUsagePolling
+import com.vincentmignot.nudgi.pipeline.scheduleUsagePipeline
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -19,6 +19,6 @@ class NudgiApplication :
 
     override fun onCreate() {
         super.onCreate()
-        schedulePeriodicUsagePolling(this)
+        scheduleUsagePipeline(this)
     }
 }
