@@ -77,4 +77,17 @@ class EventDaoTest {
 
             assertEquals(listOf("second", "first"), latest.map { it.eventType })
         }
+
+    @Test
+    fun `ofTypeSince filters by type and lower bound, oldest first`() =
+        runTest {
+            dao.insert(event(timestamp = 500L, eventType = "app_background"))
+            dao.insert(event(timestamp = 2_000L, eventType = "app_background"))
+            dao.insert(event(timestamp = 1_500L, eventType = "app_foreground"))
+            dao.insert(event(timestamp = 1_000L, eventType = "app_background"))
+
+            val events = dao.ofTypeSince(eventType = "app_background", sinceInclusive = 1_000L)
+
+            assertEquals(listOf(1_000L, 2_000L), events.map { it.timestamp })
+        }
 }
