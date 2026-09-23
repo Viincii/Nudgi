@@ -81,4 +81,21 @@ class DailyStatsDaoTest {
 
             assertEquals(listOf("2026-09-21", "2026-09-20"), recent.map { it.date })
         }
+
+    @Test
+    fun `upsertAll inserts new rows and replaces existing ones`() =
+        runTest {
+            dao.upsert(DailyStatsEntity("2026-09-22", "com.example.app", 10_000L, 0))
+
+            dao.upsertAll(
+                listOf(
+                    DailyStatsEntity("2026-09-22", "com.example.app", 40_000L, 0),
+                    DailyStatsEntity("2026-09-22", "com.other.app", 5_000L, 0),
+                ),
+            )
+
+            val stats = dao.observeForDate("2026-09-22").first().associate { it.packageName to it.usageMs }
+
+            assertEquals(mapOf("com.example.app" to 40_000L, "com.other.app" to 5_000L), stats)
+        }
 }

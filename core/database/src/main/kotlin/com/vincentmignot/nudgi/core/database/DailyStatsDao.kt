@@ -10,6 +10,9 @@ interface DailyStatsDao {
     @Upsert
     suspend fun upsert(stats: DailyStatsEntity)
 
+    @Upsert
+    suspend fun upsertAll(stats: List<DailyStatsEntity>)
+
     @Query("SELECT * FROM daily_stats WHERE date = :date")
     fun observeForDate(date: String): Flow<List<DailyStatsEntity>>
 
