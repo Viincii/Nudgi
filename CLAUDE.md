@@ -31,7 +31,7 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:designsystem` | Theme (`NudgiTheme`), shared UI | nothing |
 | `core:mascot` | `NudgiMascot`, `MascotMood`, `MascotFace` | nothing |
 | `core:database` | Room database (`events`, `daily_stats`) | nothing |
-| `core:accessibility` | `NudgiAccessibilityService` (stub), permission check | nothing |
+| `core:accessibility` | `NudgiAccessibilityService` (foreground app changes), permission check | nothing |
 | `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats` | `core:database` |
 | `core:nudge` | Rule-based nudges: rules, notification, nudge events | `core:database`, `core:usagestats` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
@@ -96,5 +96,5 @@ rendered from the same drawing.
 
 ## Next up
 
-- Trigger nudges in real time from the accessibility service instead of waiting for the next 15-minute poll.
 - Sideload a debug build onto the Nothing Phone (1) to start collecting real usage and nudge data.
+- Show the mascot's mood and today's nudges on the home screen, from `daily_stats` and the nudge events.
