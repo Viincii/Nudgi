@@ -1,4 +1,4 @@
-package com.vincentmignot.nudgi.core.usagestats
+package com.vincentmignot.nudgi.pipeline
 
 import android.content.Context
 import androidx.hilt.work.HiltWorker
@@ -8,17 +8,15 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
 @HiltWorker
-class UsagePollingWorker
+class UsagePipelineWorker
     @AssistedInject
     constructor(
         @Assisted context: Context,
         @Assisted params: WorkerParameters,
-        private val poller: UsageStatsPoller,
-        private val aggregator: DailyStatsAggregator,
+        private val pipeline: UsagePipeline,
     ) : CoroutineWorker(context, params) {
         override suspend fun doWork(): Result {
-            val windowStart = poller.poll() ?: return Result.success()
-            aggregator.aggregateSince(windowStart)
+            pipeline.run()
             return Result.success()
         }
     }
