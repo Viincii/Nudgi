@@ -28,6 +28,13 @@ private class FakeEventDao : EventDao {
         endExclusive: Long,
     ): Flow<List<EventEntity>> = flowOf(events.filter { it.timestamp in startInclusive until endExclusive })
 
+    override fun observeOfTypesBetween(
+        eventTypes: List<String>,
+        startInclusive: Long,
+        endExclusive: Long,
+    ): Flow<List<EventEntity>> =
+        flowOf(events.filter { it.eventType in eventTypes && it.timestamp in startInclusive until endExclusive })
+
     override suspend fun since(sinceInclusive: Long): List<EventEntity> =
         events.filter { it.timestamp >= sinceInclusive }.sortedBy { it.timestamp }
 

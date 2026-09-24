@@ -90,4 +90,24 @@ class EventDaoTest {
 
             assertEquals(listOf(1_000L, 2_000L), events.map { it.timestamp })
         }
+
+    @Test
+    fun `observeOfTypesBetween filters by types and half-open range, oldest first`() =
+        runTest {
+            dao.insert(event(timestamp = 1_500L, eventType = "nudge_response"))
+            dao.insert(event(timestamp = 1_000L, eventType = "nudge_shown"))
+            dao.insert(event(timestamp = 1_200L, eventType = "app_foreground"))
+            dao.insert(event(timestamp = 999L, eventType = "nudge_shown"))
+            dao.insert(event(timestamp = 2_000L, eventType = "nudge_shown"))
+
+            val events =
+                dao
+                    .observeOfTypesBetween(
+                        eventTypes = listOf("nudge_shown", "nudge_response"),
+                        startInclusive = 1_000L,
+                        endExclusive = 2_000L,
+                    ).first()
+
+            assertEquals(listOf(1_000L, 1_500L), events.map { it.timestamp })
+        }
 }
