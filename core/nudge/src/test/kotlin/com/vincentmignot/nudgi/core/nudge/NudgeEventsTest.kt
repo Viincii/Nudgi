@@ -91,4 +91,13 @@ class NudgeEventsTest {
             pendingOutcomeEvents(listOf(shown()) + first, shownAt + 20 * MINUTE_MS, config),
         )
     }
+
+    @Test
+    fun `recorded outcomes are read back by nudge`() {
+        val events =
+            listOf(shown("n1"), shown("n2"), shown("n3"), background(shownAt + 3 * MINUTE_MS, 28 * MINUTE_MS))
+        val outcomes = pendingOutcomeEvents(events.take(2) + events.last(), shownAt + 12 * MINUTE_MS, config)
+
+        assertEquals(mapOf("n1" to true, "n2" to true), nudgeOutcomes(events + outcomes))
+    }
 }

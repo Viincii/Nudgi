@@ -74,11 +74,7 @@ fun pendingOutcomeEvents(
     now: Long,
     config: NudgeConfig,
 ): List<EventEntity> {
-    val recorded =
-        events
-            .filter { it.eventType == EVENT_TYPE_NUDGE_OUTCOME }
-            .mapNotNull { decodeOrNull<NudgeOutcomeMetadata>(it.metadata)?.nudgeId }
-            .toSet()
+    val recorded = nudgeOutcomes(events)
     return pastNudges(events)
         .filter { it.nudgeId !in recorded && now >= it.timestamp + config.outcomeWindowMs + config.sessionMergeGapMs }
         .map { nudge ->
@@ -100,6 +96,13 @@ fun pendingOutcomeEvents(
             )
         }
 }
+
+/** Whether the user left the app after each nudge in [events] whose outcome is recorded, by `nudge_id`. */
+fun nudgeOutcomes(events: List<EventEntity>): Map<String, Boolean> =
+    events
+        .filter { it.eventType == EVENT_TYPE_NUDGE_OUTCOME }
+        .mapNotNull { decodeOrNull<NudgeOutcomeMetadata>(it.metadata) }
+        .associate { it.nudgeId to it.leftApp }
 
 /**
  * The first time [packageName] went to the background within the outcome window after [since]
