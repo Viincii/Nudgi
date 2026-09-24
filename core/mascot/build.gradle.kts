@@ -6,3 +6,7 @@ plugins {
 android {
     namespace = "com.vincentmignot.nudgi.core.mascot"
 }
+
+dependencies {
+    testImplementation(libs.robolectric)
+}

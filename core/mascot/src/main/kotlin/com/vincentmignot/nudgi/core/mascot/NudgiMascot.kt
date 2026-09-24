@@ -101,12 +101,13 @@ private fun animateFace(target: MascotFace): MascotFace {
 }
 
 /**
- * Draws Nudgi in a unit square scaled to the canvas.
+ * Draws Nudgi in a unit square scaled to the canvas. Shared by the animated composable and the
+ * bitmaps rendered for surfaces that cannot host a Compose `Canvas`.
  *
  * @param bob 0..1 idle breathing phase.
  * @param blink 1 for open eyes down to [BLINK_CLOSED_SCALE] mid-blink.
  */
-private fun DrawScope.drawNudge(
+internal fun DrawScope.drawNudge(
     face: MascotFace,
     bob: Float,
     blink: Float,
