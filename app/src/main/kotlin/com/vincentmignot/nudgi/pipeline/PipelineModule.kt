@@ -1,6 +1,7 @@
 package com.vincentmignot.nudgi.pipeline
 
 import com.vincentmignot.nudgi.core.accessibility.ForegroundAppListener
+import com.vincentmignot.nudgi.core.nudge.NudgeResponseListener
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -11,4 +12,7 @@ import dagger.hilt.components.SingletonComponent
 abstract class PipelineModule {
     @Binds
     abstract fun bindForegroundAppListener(impl: RealtimeNudgeTrigger): ForegroundAppListener
+
+    @Binds
+    abstract fun bindNudgeResponseListener(impl: RealtimeNudgeTrigger): NudgeResponseListener
 }

@@ -16,6 +16,9 @@ class NudgeActionReceiver : BroadcastReceiver() {
     @Inject
     lateinit var recorder: NudgeResponseRecorder
 
+    @Inject
+    lateinit var listener: NudgeResponseListener
+
     override fun onReceive(
         context: Context,
         intent: Intent,
@@ -32,6 +35,7 @@ class NudgeActionReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 recorder.record(nudgeId, packageName, response)
+                listener.onNudgeResponse(packageName, response)
             } finally {
                 pendingResult.finish()
             }

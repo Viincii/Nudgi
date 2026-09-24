@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.pipeline
 
+import com.vincentmignot.nudgi.core.nudge.NudgeResponse
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -116,5 +117,49 @@ class RealtimeNudgeTriggerTest {
             advanceTimeBy(60 * MINUTE_MS)
 
             assertEquals(emptyList<Long>(), pipeline.runs)
+        }
+
+    @Test
+    fun `a snooze reschedules right away instead of waiting for the earlier wake-up`() =
+        runTest {
+            val pipeline = FakePipeline(this).apply { thenRunAt(35 * MINUTE_MS, 26 * MINUTE_MS, null) }
+            val trigger = trigger(pipeline)
+
+            trigger.onForegroundApp(FEED)
+            advanceTimeBy(21 * MINUTE_MS)
+            trigger.onNudgeResponse(FEED, NudgeResponse.Snooze)
+            advanceTimeBy(60 * MINUTE_MS)
+
+            assertEquals(listOf(2_000L, 21 * MINUTE_MS, 26 * MINUTE_MS), pipeline.runs)
+        }
+
+    @Test
+    fun `a snooze for an app the user already left changes nothing`() =
+        runTest {
+            val pipeline = FakePipeline(this)
+            val trigger = trigger(pipeline)
+
+            trigger.onForegroundApp(FEED)
+            advanceTimeBy(5 * MINUTE_MS)
+            trigger.onForegroundApp(LAUNCHER)
+            trigger.onNudgeResponse(FEED, NudgeResponse.Snooze)
+            advanceTimeBy(60 * MINUTE_MS)
+
+            assertEquals(listOf(2_000L), pipeline.runs)
+        }
+
+    @Test
+    fun `other responses keep the schedule`() =
+        runTest {
+            val pipeline = FakePipeline(this).apply { thenRunAt(35 * MINUTE_MS) }
+            val trigger = trigger(pipeline)
+
+            trigger.onForegroundApp(FEED)
+            advanceTimeBy(21 * MINUTE_MS)
+            trigger.onNudgeResponse(FEED, NudgeResponse.Dismissed)
+            trigger.onNudgeResponse(FEED, NudgeResponse.Stop)
+            advanceTimeBy(60 * MINUTE_MS)
+
+            assertEquals(listOf(2_000L, 35 * MINUTE_MS), pipeline.runs)
         }
 }
