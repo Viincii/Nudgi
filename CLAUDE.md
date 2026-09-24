@@ -97,4 +97,4 @@ rendered from the same drawing.
 ## Next up
 
 - Sideload a debug build onto the Nothing Phone (1) to start collecting real usage and nudge data.
-- Show the mascot's mood and today's nudges on the home screen, from `daily_stats` and the nudge events.
+- Home screen widget (roadmap step 3): per-mood bitmaps of the mascot, fed by the same mood as the home screen.
