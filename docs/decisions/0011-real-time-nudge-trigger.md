@@ -19,6 +19,11 @@ for the one moment a nudge can help. The accessibility service was already grant
   when a rule could next fire if the user stays (`nextEvaluationAt`), and the trigger sleeps until then and runs
   again, until the user leaves the app. The rules keep reading only `events`, so a nudge decided in real time and
   one decided by the worker cannot disagree, and nothing needs another source of truth for the current session.
+- **A snooze reschedules the trigger.** The notification shade is not a foreground change, so tapping
+  "5 more minutes" there leaves the trigger asleep until the wake-up it computed before the snooze, often the
+  next long-session level 15 minutes later. `core:nudge` defines a `NudgeResponseListener`, told once a response
+  is recorded, which `app` binds to the trigger: on a snooze for the app still in the foreground, it runs the
+  pipeline again at once, and the evaluation then asks to wake up when the follow-up is due.
 - **Two seconds of settling before the first run.** Usage events reach `UsageStatsManager` slightly after the
   window change the accessibility service sees. Polling at once could close the poll window before the foreground
   event is recorded, and that event would never be read.

@@ -1,6 +1,8 @@
 package com.vincentmignot.nudgi.pipeline
 
 import com.vincentmignot.nudgi.core.accessibility.ForegroundAppListener
+import com.vincentmignot.nudgi.core.nudge.NudgeResponse
+import com.vincentmignot.nudgi.core.nudge.NudgeResponseListener
 import com.vincentmignot.nudgi.core.nudge.WatchedApps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +25,11 @@ private const val SETTLE_MS = 2_000L
  * could fire, for as long as the app stays there. The periodic worker keeps running on its own and
  * catches anything this misses, e.g. while the accessibility service is off.
  *
- * Called on the main thread by the accessibility service.
+ * A snooze tapped in the notification shade reschedules too: the shade is not a foreground
+ * change, and without it the follow-up would wait for whatever wake-up was computed before.
+ *
+ * [onForegroundApp] is called on the main thread by the accessibility service; the state below is
+ * only touched there.
  */
 @Singleton
 class RealtimeNudgeTrigger internal constructor(
@@ -31,7 +37,8 @@ class RealtimeNudgeTrigger internal constructor(
     private val watchedApps: WatchedApps,
     private val scope: CoroutineScope,
     private val clock: () -> Long,
-) : ForegroundAppListener {
+) : ForegroundAppListener,
+    NudgeResponseListener {
     @Inject
     constructor(
         pipeline: UsagePipeline,
@@ -51,11 +58,25 @@ class RealtimeNudgeTrigger internal constructor(
         if (packageName == currentPackage && job?.isActive == true) return
         currentPackage = packageName
         job?.cancel()
-        job = if (watchedApps.isWatched(packageName)) scope.launch { runWhileInForeground() } else null
+        job = if (watchedApps.isWatched(packageName)) scope.launch { runWhileInForeground(SETTLE_MS) } else null
     }
 
-    private suspend fun runWhileInForeground() {
-        delay(SETTLE_MS)
+    override fun onNudgeResponse(
+        packageName: String,
+        response: NudgeResponse,
+    ) {
+        // Only a snooze moves the next evaluation earlier. The response is already in `events`,
+        // so there is nothing to settle before running.
+        if (response != NudgeResponse.Snooze) return
+        scope.launch {
+            if (packageName != currentPackage || !watchedApps.isWatched(packageName)) return@launch
+            job?.cancel()
+            job = scope.launch { runWhileInForeground(settleMs = 0L) }
+        }
+    }
+
+    private suspend fun runWhileInForeground(settleMs: Long) {
+        delay(settleMs)
         var next = pipeline.run()
         while (next != null) {
             delay((next - clock()).coerceAtLeast(0L))
