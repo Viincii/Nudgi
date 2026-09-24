@@ -1,4 +1,4 @@
-package com.vincentmignot.nudgi.feature.home
+package com.vincentmignot.nudgi.core.today
 
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_OUTCOME
@@ -16,17 +16,17 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** The event types [todayUiState] reads; suppressions are never shown to the user. */
+/** The event types [todayOf] reads; suppressions are never shown to the user. */
 internal val TODAY_EVENT_TYPES = listOf(EVENT_TYPE_NUDGE_SHOWN, EVENT_TYPE_NUDGE_RESPONSE, EVENT_TYPE_NUDGE_OUTCOME)
 
-/** Builds the home screen from today's `daily_stats` rows and the day's [TODAY_EVENT_TYPES] events. */
-internal fun todayUiState(
+/** Builds [Today] from the day's `daily_stats` rows and its [TODAY_EVENT_TYPES] events. */
+internal fun todayOf(
     stats: List<DailyStatsEntity>,
     events: List<EventEntity>,
     isWatched: (String) -> Boolean,
     labelOf: (String) -> String,
     zone: ZoneId,
-): HomeUiState {
+): Today {
     val watchedUsageMs = stats.filter { isWatched(it.packageName) }.sumOf { it.usageMs }
     val outcomes = nudgeOutcomes(events)
     val nudges =
@@ -46,12 +46,7 @@ internal fun todayUiState(
                         },
                 )
             }
-    return HomeUiState(
-        mood = moodFor(watchedUsageMs, nudges.count { it.outcome == TodayNudge.Outcome.KeptGoing }),
-        isLoaded = true,
-        watchedUsageMs = watchedUsageMs,
-        nudges = nudges,
-    )
+    return Today(watchedUsageMs = watchedUsageMs, nudges = nudges)
 }
 
 /** Today's local date, then the next one at each midnight, for as long as it is collected. */

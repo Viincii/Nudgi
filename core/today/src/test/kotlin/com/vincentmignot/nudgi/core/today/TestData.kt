@@ -1,4 +1,4 @@
-package com.vincentmignot.nudgi.feature.home
+package com.vincentmignot.nudgi.core.today
 
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_OUTCOME

@@ -1,10 +1,10 @@
-package com.vincentmignot.nudgi.feature.home
+package com.vincentmignot.nudgi.core.today
 
 import com.vincentmignot.nudgi.core.mascot.MascotMood
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class HomeMoodTest {
+class TodayMoodTest {
     @Test
     fun `a light day with no ignored nudge is happy`() {
         assertEquals(MascotMood.Happy, moodFor(watchedUsageMs = NEUTRAL_USAGE_MS - 1, nudgesKeptGoing = 0))

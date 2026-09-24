@@ -1,4 +1,4 @@
-package com.vincentmignot.nudgi.feature.home
+package com.vincentmignot.nudgi.core.today
 
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
 import com.vincentmignot.nudgi.core.database.EventEntity
@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalTime
@@ -22,7 +21,7 @@ class TodaySummaryTest {
     private fun state(
         stats: List<DailyStatsEntity> = emptyList(),
         events: List<EventEntity> = emptyList(),
-    ) = todayUiState(stats, events, isWatched, labelOf, PARIS)
+    ) = todayOf(stats, events, isWatched, labelOf, PARIS)
 
     @Test
     fun `only watched apps count towards usage`() {
@@ -38,7 +37,6 @@ class TodaySummaryTest {
 
         assertEquals(70 * MINUTE_MS, state.watchedUsageMs)
         assertEquals(MascotMood.Neutral, state.mood)
-        assertTrue(state.isLoaded)
     }
 
     @Test
