@@ -3,6 +3,7 @@ package com.vincentmignot.nudgi.pipeline
 import com.vincentmignot.nudgi.core.nudge.NudgeEvaluator
 import com.vincentmignot.nudgi.core.usagestats.DailyStatsAggregator
 import com.vincentmignot.nudgi.core.usagestats.UsageStatsPoller
+import com.vincentmignot.nudgi.feature.widget.NudgiWidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -21,6 +22,10 @@ fun interface PipelineRunner {
  * instant. Runs are serialized: two overlapping polls would read the same window and insert its
  * events twice. A run is never cancelled halfway either, since a poll cancelled between inserting
  * its events and saving its window would insert them again on the next run.
+ *
+ * The home screen widget only shows a snapshot, so it is redrawn after every run. Runs are the
+ * only writers of usage and nudge outcomes, which are all the widget shows, and the periodic
+ * worker also carries it over midnight.
  */
 @Singleton
 class UsagePipeline
@@ -29,16 +34,20 @@ class UsagePipeline
         private val poller: UsageStatsPoller,
         private val aggregator: DailyStatsAggregator,
         private val evaluator: NudgeEvaluator,
+        private val widgetUpdater: NudgiWidgetUpdater,
     ) : PipelineRunner {
         private val mutex = Mutex()
 
         override suspend fun run(): Long? =
             withContext(Dispatchers.IO + NonCancellable) {
-                mutex.withLock {
-                    val now = System.currentTimeMillis()
-                    val windowStart = poller.poll(now) ?: return@withLock null
-                    aggregator.aggregateSince(windowStart)
-                    evaluator.evaluate(now)
-                }
+                val next =
+                    mutex.withLock {
+                        val now = System.currentTimeMillis()
+                        val windowStart = poller.poll(now) ?: return@withLock null
+                        aggregator.aggregateSince(windowStart)
+                        evaluator.evaluate(now)
+                    }
+                widgetUpdater.update()
+                next
             }
     }

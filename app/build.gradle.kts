@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:usagestats"))
     implementation(project(":feature:home"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:widget"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)

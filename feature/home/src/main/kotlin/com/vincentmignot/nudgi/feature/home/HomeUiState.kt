@@ -1,8 +1,7 @@
 package com.vincentmignot.nudgi.feature.home
 
 import com.vincentmignot.nudgi.core.mascot.MascotMood
-import com.vincentmignot.nudgi.core.nudge.NudgeRule
-import java.time.LocalTime
+import com.vincentmignot.nudgi.core.today.TodayNudge
 
 data class HomeUiState(
     val mood: MascotMood = MascotMood.Happy,
@@ -15,22 +14,3 @@ data class HomeUiState(
     /** Nudges shown today, oldest first. Held-out nudges were never seen and are left out. */
     val nudges: List<TodayNudge> = emptyList(),
 )
-
-data class TodayNudge(
-    val nudgeId: String,
-    val time: LocalTime,
-    val appLabel: String,
-    val rule: NudgeRule,
-    val outcome: Outcome,
-) {
-    enum class Outcome {
-        /** The user left the app within the outcome window. */
-        TookABreak,
-
-        /** The user was still in the app when the outcome window closed. */
-        KeptGoing,
-
-        /** The outcome window has not closed yet, or no evaluation has recorded it. */
-        Pending,
-    }
-}

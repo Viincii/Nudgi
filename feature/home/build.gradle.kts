@@ -7,9 +7,8 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:database"))
     implementation(project(":core:nudge"))
-    implementation(project(":core:usagestats"))
+    implementation(project(":core:today"))
 
     testImplementation(libs.kotlinx.coroutines.test)
 }
