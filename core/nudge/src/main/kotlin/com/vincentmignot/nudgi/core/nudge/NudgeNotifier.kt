@@ -37,6 +37,7 @@ class AndroidNudgeNotifier
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val appLabels: AppLabels,
     ) : NudgeNotifier {
         override fun canNotify(): Boolean = areNudgeNotificationsEnabled(context)
 
@@ -79,7 +80,7 @@ class AndroidNudgeNotifier
             candidate: NudgeCandidate,
             nudgeContext: NudgeContext,
         ): String {
-            val appLabel = appLabel(nudgeContext.packageName)
+            val appLabel = appLabels.labelOf(nudgeContext.packageName)
             return when (candidate.rule) {
                 NudgeRule.LongSession -> {
                     context.getString(
@@ -104,15 +105,6 @@ class AndroidNudgeNotifier
                 NudgeRule.SnoozeFollowUp -> {
                     context.getString(R.string.nudge_snooze_followup, appLabel)
                 }
-            }
-        }
-
-        private fun appLabel(packageName: String): String {
-            val packageManager = context.packageManager
-            return try {
-                packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
-            } catch (_: PackageManager.NameNotFoundException) {
-                packageName
             }
         }
 
