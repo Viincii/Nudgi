@@ -12,6 +12,12 @@ Everything Nudgi observes or computes is stored in a local database on your phon
 
 None of it is transmitted anywhere.
 
+## Exporting your data
+
+In Settings, "Export my data" writes everything above to a zip file, in a location you pick with the system file
+picker. Nudgi never sends that file anywhere, but once it is saved it is outside the app: if you pick a synced
+folder, it is synced like any other file there.
+
 ## What Nudgi does not do
 
 - **No network access.** The app does not declare the `INTERNET` permission, so it cannot send data even by accident.
@@ -34,7 +40,8 @@ Nudgi is distributed as an APK from GitHub rather than the Play Store, so you ca
 
 ## Deleting your data
 
-Uninstalling the app deletes its local database. There is no server-side copy to erase.
+Uninstalling the app deletes its local database. There is no server-side copy to erase. Exports you saved are
+yours to delete.
 
 ## Changes
 

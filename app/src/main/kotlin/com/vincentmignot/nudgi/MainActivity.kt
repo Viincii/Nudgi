@@ -14,6 +14,8 @@ import com.vincentmignot.nudgi.feature.home.homeScreen
 import com.vincentmignot.nudgi.feature.onboarding.ONBOARDING_ROUTE
 import com.vincentmignot.nudgi.feature.onboarding.hasCompletedOnboarding
 import com.vincentmignot.nudgi.feature.onboarding.onboardingScreen
+import com.vincentmignot.nudgi.feature.settings.SETTINGS_ROUTE
+import com.vincentmignot.nudgi.feature.settings.settingsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -36,7 +38,11 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                     )
-                    homeScreen(showDebugControls = BuildConfig.DEBUG)
+                    homeScreen(
+                        showDebugControls = BuildConfig.DEBUG,
+                        onOpenSettings = { navController.navigate(SETTINGS_ROUTE) },
+                    )
+                    settingsScreen()
                 }
             }
         }

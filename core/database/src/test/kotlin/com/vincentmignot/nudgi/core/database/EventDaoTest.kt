@@ -110,4 +110,26 @@ class EventDaoTest {
 
             assertEquals(listOf(1_000L, 1_500L), events.map { it.timestamp })
         }
+
+    @Test
+    fun `maxId is null on an empty table`() =
+        runTest {
+            assertEquals(null, dao.maxId())
+        }
+
+    @Test
+    fun `pageByIdAfter pages in id order and stops at the upper bound`() =
+        runTest {
+            // Inserted out of timestamp order: a scan by id must not depend on timestamps.
+            listOf(3_000L, 1_000L, 2_000L, 4_000L).forEach { dao.insert(event(timestamp = it, eventType = "e")) }
+            val upToId = dao.maxId()!! - 1
+
+            val first = dao.pageByIdAfter(afterId = 0L, upToId = upToId, limit = 2)
+            val second = dao.pageByIdAfter(afterId = first.last().id, upToId = upToId, limit = 2)
+            val third = dao.pageByIdAfter(afterId = second.last().id, upToId = upToId, limit = 2)
+
+            assertEquals(listOf(3_000L, 1_000L), first.map { it.timestamp })
+            assertEquals(listOf(2_000L), second.map { it.timestamp })
+            assertEquals(emptyList<EventEntity>(), third)
+        }
 }

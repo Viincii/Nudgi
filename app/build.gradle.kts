@@ -17,6 +17,18 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        // A debug key committed with the project, so APKs from CI and from any machine sign alike and install
+        // over each other. The default one is generated per machine, so each CI run had a different signature.
+        // Debug only: release builds must never use it.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -33,6 +45,7 @@ dependencies {
     implementation(project(":core:usagestats"))
     implementation(project(":feature:home"))
     implementation(project(":feature:onboarding"))
+    implementation(project(":feature:settings"))
     implementation(project(":feature:widget"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

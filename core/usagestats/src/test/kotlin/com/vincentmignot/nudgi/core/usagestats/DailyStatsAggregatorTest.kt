@@ -37,6 +37,8 @@ private class FakeDailyStatsDao : DailyStatsDao {
                 .sortedByDescending { it.date }
                 .take(limit),
         )
+
+    override suspend fun all(): List<DailyStatsEntity> = error("Not used by these tests")
 }
 
 class DailyStatsAggregatorTest {

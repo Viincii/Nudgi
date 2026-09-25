@@ -21,4 +21,7 @@ interface DailyStatsDao {
         packageName: String,
         limit: Int,
     ): Flow<List<DailyStatsEntity>>
+
+    @Query("SELECT * FROM daily_stats ORDER BY date, package_name")
+    suspend fun all(): List<DailyStatsEntity>
 }

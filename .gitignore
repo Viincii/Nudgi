@@ -37,6 +37,7 @@ local.properties
 *.apk
 *.aab
 *.keystore
+!app/debug.keystore
 *.jks
 captures/
 .cxx/

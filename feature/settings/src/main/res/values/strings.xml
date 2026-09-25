@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Settings</string>
+    <string name="settings_data_title">Your data</string>
+    <string name="settings_data_explanation">Everything Nudgi records stays on this phone, and uninstalling the app deletes it. Export it to a zip file to keep a copy: you choose where it is saved, and it goes nowhere else.</string>
+    <string name="settings_export_button">Export my data</string>
+    <string name="settings_export_in_progress">Exporting…</string>
+    <plurals name="settings_export_done">
+        <item quantity="one">Exported %1$d event.</item>
+        <item quantity="other">Exported %1$d events.</item>
+    </plurals>
+    <string name="settings_export_failed">The export failed and no file was kept. Try again, or pick another location.</string>
+</resources>

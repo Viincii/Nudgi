@@ -40,4 +40,15 @@ interface EventDao {
 
     @Query("SELECT * FROM events ORDER BY timestamp DESC LIMIT :limit")
     suspend fun latest(limit: Int): List<EventEntity>
+
+    @Query("SELECT MAX(id) FROM events")
+    suspend fun maxId(): Long?
+
+    /** One page of a full scan in insertion order, for exports that must not hold every row in memory. */
+    @Query("SELECT * FROM events WHERE id > :afterId AND id <= :upToId ORDER BY id LIMIT :limit")
+    suspend fun pageByIdAfter(
+        afterId: Long,
+        upToId: Long,
+        limit: Int,
+    ): List<EventEntity>
 }
