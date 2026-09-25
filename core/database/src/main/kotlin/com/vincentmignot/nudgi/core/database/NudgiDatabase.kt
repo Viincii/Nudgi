@@ -3,9 +3,12 @@ package com.vincentmignot.nudgi.core.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
+/** Written into exports, so a file can be matched with the schema in `core/database/schemas/`. */
+const val NUDGI_DATABASE_VERSION = 1
+
 @Database(
     entities = [EventEntity::class, DailyStatsEntity::class],
-    version = 1,
+    version = NUDGI_DATABASE_VERSION,
     exportSchema = true,
 )
 abstract class NudgiDatabase : RoomDatabase() {

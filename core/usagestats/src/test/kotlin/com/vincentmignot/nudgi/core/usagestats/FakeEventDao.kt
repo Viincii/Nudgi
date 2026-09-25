@@ -45,4 +45,12 @@ class FakeEventDao : EventDao {
             .sortedBy { it.timestamp }
 
     override suspend fun latest(limit: Int): List<EventEntity> = inserted.takeLast(limit)
+
+    override suspend fun maxId(): Long? = error("Not used by these tests")
+
+    override suspend fun pageByIdAfter(
+        afterId: Long,
+        upToId: Long,
+        limit: Int,
+    ): List<EventEntity> = error("Not used by these tests")
 }

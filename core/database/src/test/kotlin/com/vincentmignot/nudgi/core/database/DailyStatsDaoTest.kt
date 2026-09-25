@@ -98,4 +98,16 @@ class DailyStatsDaoTest {
 
             assertEquals(mapOf("com.example.app" to 40_000L, "com.other.app" to 5_000L), stats)
         }
+
+    @Test
+    fun `all returns every row ordered by date then package`() =
+        runTest {
+            dao.upsert(DailyStatsEntity("2026-09-22", "com.b.app", 1L, 0))
+            dao.upsert(DailyStatsEntity("2026-09-21", "com.z.app", 2L, 0))
+            dao.upsert(DailyStatsEntity("2026-09-22", "com.a.app", 3L, 0))
+
+            val all = dao.all()
+
+            assertEquals(listOf(2L, 3L, 1L), all.map { it.usageMs })
+        }
 }

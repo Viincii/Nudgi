@@ -37,6 +37,8 @@ private class FakeDailyStatsDao : DailyStatsDao {
         packageName: String,
         limit: Int,
     ): Flow<List<DailyStatsEntity>> = error("Not used by the repository")
+
+    override suspend fun all(): List<DailyStatsEntity> = error("Not used by these tests")
 }
 
 private class FakeEventDao : EventDao {
@@ -73,6 +75,14 @@ private class FakeEventDao : EventDao {
     ): List<EventEntity> = error("Not used by the repository")
 
     override suspend fun latest(limit: Int): List<EventEntity> = error("Not used by the repository")
+
+    override suspend fun maxId(): Long? = error("Not used by these tests")
+
+    override suspend fun pageByIdAfter(
+        afterId: Long,
+        upToId: Long,
+        limit: Int,
+    ): List<EventEntity> = error("Not used by these tests")
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)

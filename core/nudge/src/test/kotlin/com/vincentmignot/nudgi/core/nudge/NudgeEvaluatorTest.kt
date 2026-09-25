@@ -44,6 +44,14 @@ private class FakeEventDao : EventDao {
     ): List<EventEntity> = since(sinceInclusive).filter { it.eventType == eventType }
 
     override suspend fun latest(limit: Int): List<EventEntity> = events.takeLast(limit)
+
+    override suspend fun maxId(): Long? = error("Not used by these tests")
+
+    override suspend fun pageByIdAfter(
+        afterId: Long,
+        upToId: Long,
+        limit: Int,
+    ): List<EventEntity> = error("Not used by these tests")
 }
 
 private class FakeNotifier(
