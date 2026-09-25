@@ -12,7 +12,8 @@ const val EXPORT_FORMAT_VERSION = 1
 /** `manifest.json`: what a script needs to interpret the other files of an export. */
 @Serializable
 data class ExportManifest(
-    @SerialName("format_version") val formatVersion: Int = EXPORT_FORMAT_VERSION,
+    // No default value: kotlinx.serialization leaves fields at their default out of the JSON.
+    @SerialName("format_version") val formatVersion: Int,
     @SerialName("database_schema_version") val databaseSchemaVersion: Int,
     @SerialName("app_version_name") val appVersionName: String,
     @SerialName("app_version_code") val appVersionCode: Long,

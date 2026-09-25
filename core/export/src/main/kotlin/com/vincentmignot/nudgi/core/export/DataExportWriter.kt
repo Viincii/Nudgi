@@ -136,6 +136,7 @@ private data class ExportedEvent(
 
 private fun ExportInfo.toManifest(summary: ExportSummary) =
     ExportManifest(
+        formatVersion = EXPORT_FORMAT_VERSION,
         databaseSchemaVersion = databaseSchemaVersion,
         appVersionName = appVersionName,
         appVersionCode = appVersionCode,

@@ -90,6 +90,15 @@ class DataExportWriterTest {
     }
 
     @Test
+    fun `the manifest spells out the format version`() {
+        val (_, files) = export(FakeSource(events = emptyList()))
+
+        val manifest = Json.parseToJsonElement(files.getValue(MANIFEST_FILE)).jsonObject
+
+        assertEquals(EXPORT_FORMAT_VERSION, manifest.getValue("format_version").jsonPrimitive.int)
+    }
+
+    @Test
     fun `events are written one per line with metadata inlined as an object`() {
         val (_, files) =
             export(FakeSource(events = listOf(event(1, metadata = """{"nudge_id":"n1","level":2}"""))))
@@ -161,6 +170,7 @@ class DataExportWriterTest {
         val manifest = Json.decodeFromString(ExportManifest.serializer(), files.getValue(MANIFEST_FILE))
         assertEquals(
             ExportManifest(
+                formatVersion = EXPORT_FORMAT_VERSION,
                 databaseSchemaVersion = 1,
                 appVersionName = "0.1.0",
                 appVersionCode = 1L,
