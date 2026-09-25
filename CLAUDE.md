@@ -35,6 +35,7 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats` | `core:database` |
 | `core:nudge` | Rule-based nudges: rules, notification, nudge events | `core:database`, `core:usagestats` |
 | `core:today` | Today's summary and the mood derived from it, shared by the home screen and the widget | `core:database`, `core:mascot`, `core:nudge`, `core:usagestats` |
+| `core:export` | Writes the database to a zip (JSON Lines, CSV, manifest) for a user-initiated export | `core:database` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
 | `build-logic` | Convention plugins (`nudgi.android.*`) | n/a |
 
@@ -99,3 +100,4 @@ code into a bitmap (see `docs/decisions/0013`).
 
 - Sideload a debug build onto the Nothing Phone (1) to start collecting real usage and nudge data.
 - App blocking with progressive friction (roadmap step 4).
+- Import an export back into the database (see `docs/decisions/0014`).
