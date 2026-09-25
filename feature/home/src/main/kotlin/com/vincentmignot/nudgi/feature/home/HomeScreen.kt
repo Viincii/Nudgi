@@ -21,6 +21,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,6 +47,7 @@ private const val MINUTE_MS = 60_000L
 @Composable
 fun HomeRoute(
     showDebugControls: Boolean,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -54,6 +56,7 @@ fun HomeRoute(
         uiState = uiState,
         showDebugControls = showDebugControls,
         onMoodSelected = viewModel::onMoodSelected,
+        onOpenSettings = onOpenSettings,
         modifier = modifier,
     )
 }
@@ -63,6 +66,7 @@ internal fun HomeScreen(
     uiState: HomeUiState,
     showDebugControls: Boolean,
     onMoodSelected: (MascotMood?) -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
@@ -96,6 +100,10 @@ internal fun HomeScreen(
                 )
                 Spacer(Modifier.height(16.dp))
                 TodayNudges(nudges = uiState.nudges, modifier = Modifier.fillMaxWidth())
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = onOpenSettings) {
+                Text(stringResource(R.string.home_open_settings))
             }
             if (showDebugControls) {
                 Spacer(Modifier.height(16.dp))
@@ -248,6 +256,7 @@ private fun HomeScreenPreview() {
                 ),
             showDebugControls = true,
             onMoodSelected = {},
+            onOpenSettings = {},
         )
     }
 }

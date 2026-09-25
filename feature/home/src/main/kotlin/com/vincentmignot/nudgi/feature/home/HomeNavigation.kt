@@ -5,8 +5,11 @@ import androidx.navigation.compose.composable
 
 const val HOME_ROUTE = "home"
 
-fun NavGraphBuilder.homeScreen(showDebugControls: Boolean) {
+fun NavGraphBuilder.homeScreen(
+    showDebugControls: Boolean,
+    onOpenSettings: () -> Unit,
+) {
     composable(HOME_ROUTE) {
-        HomeRoute(showDebugControls = showDebugControls)
+        HomeRoute(showDebugControls = showDebugControls, onOpenSettings = onOpenSettings)
     }
 }
