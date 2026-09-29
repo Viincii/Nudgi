@@ -133,6 +133,7 @@ def decisions(events, now, watched):
             "t": t, "hour": hour, "rule": md["rule_id"], "policy": md.get("policy_id") or "rules_v1",
             "action": action, "benefit": b, "reward": weight(hour) * b - COSTS[action],
             "propensity": rules_propensity(md, action), "shadow": md.get("shadow"),
+            "expression": md.get("expression"),
         })
     return rows
 
@@ -164,6 +165,15 @@ def main(path):
             print(f"  {action:18} {len(group):4} {mean(r['benefit'] for r in group):8.2f} "
                   f"{mean(r['reward'] for r in group):8.2f}   {len(group) - night} / {night}")
     print(f"  {'rules, all':18} {len(rows):4} {mean(r['benefit'] for r in rows):8.2f} {mean(r['reward'] for r in rows):8.2f}")
+
+    faced = [r for r in rows if r["expression"]]
+    if faced:
+        print("\nWhat each coach expression yielded, on shown interventions (decision 0021)")
+        print(f"  {'expression':18} {'n':>4} {'benefit':>8} {'reward':>8}")
+        for expression in sorted({r["expression"] for r in faced}):
+            group = [r for r in faced if r["expression"] == expression]
+            print(f"  {expression:18} {len(group):4} {mean(r['benefit'] for r in group):8.2f} "
+                  f"{mean(r['reward'] for r in group):8.2f}")
 
     shadowed = [r for r in rows if r["shadow"]]
     print(f"\nShadow bandit: {len(shadowed)} scored decisions")

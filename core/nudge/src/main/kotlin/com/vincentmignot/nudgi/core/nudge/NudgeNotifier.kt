@@ -11,6 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.vincentmignot.nudgi.core.mascot.renderMascot
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 
@@ -21,10 +22,14 @@ interface NudgeNotifier {
         nudgeId: String,
         candidate: NudgeCandidate,
         nudgeContext: NudgeContext,
+        expression: CoachExpression,
     )
 }
 
 private const val CHANNEL_ID = "nudges"
+
+/** The size Android shows a notification's large icon at. */
+private const val LARGE_ICON_DP = 64
 
 /** Whether nudges can reach the user: the runtime permission on Android 13+, and not blocked in settings. */
 fun areNudgeNotificationsEnabled(context: Context): Boolean =
@@ -44,6 +49,7 @@ class AndroidNudgeNotifier
             nudgeId: String,
             candidate: NudgeCandidate,
             nudgeContext: NudgeContext,
+            expression: CoachExpression,
         ) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -59,6 +65,7 @@ class AndroidNudgeNotifier
                     .setSmallIcon(R.drawable.ic_nudge_notification)
                     .setContentTitle(context.getString(R.string.nudge_title))
                     .setContentText(messages.message(candidate, nudgeContext))
+                    .setLargeIcon(renderMascot(expression.mood, largeIconPx()))
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setAutoCancel(true)
@@ -92,6 +99,8 @@ class AndroidNudgeNotifier
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         }
+
+        private fun largeIconPx(): Int = (LARGE_ICON_DP * context.resources.displayMetrics.density).toInt()
 
         private fun ensureChannel() {
             val channel =

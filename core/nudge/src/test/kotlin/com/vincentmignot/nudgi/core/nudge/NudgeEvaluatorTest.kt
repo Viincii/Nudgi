@@ -58,6 +58,7 @@ private class FakeNotifier(
     var enabled: Boolean = true,
 ) : NudgeNotifier {
     val shown = mutableListOf<Pair<String, NudgeCandidate>>()
+    val expressions = mutableListOf<CoachExpression>()
 
     override fun canNotify() = enabled
 
@@ -65,8 +66,10 @@ private class FakeNotifier(
         nudgeId: String,
         candidate: NudgeCandidate,
         nudgeContext: NudgeContext,
+        expression: CoachExpression,
     ) {
         shown += nudgeId to candidate
+        expressions += expression
     }
 }
 
@@ -74,13 +77,16 @@ private class FakeFrictionPresenter(
     var available: Boolean = true,
 ) : FrictionPresenter {
     val presented = mutableListOf<Pair<String, FrictionLevel>>()
+    val expressions = mutableListOf<CoachExpression?>()
 
     override suspend fun present(
         nudgeId: String,
         candidate: NudgeCandidate,
         nudgeContext: NudgeContext,
         level: FrictionLevel,
+        expression: CoachExpression?,
     ): Boolean {
+        expressions += expression
         if (available) presented += nudgeId to level
         return available
     }
@@ -294,5 +300,46 @@ class NudgeEvaluatorTest {
 
             assertEquals(1, notifier.shown.size)
             assertNull(lastDecision().shadow)
+        }
+
+    @Test
+    fun `a shown notification carries a drawn expression, recorded with its probability`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+            // Holdout, escalation, then the expression: 0.9 falls in the last third.
+            draws += listOf(0.5, 0.5, 0.9)
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(listOf(CoachExpression.Worried), notifier.expressions)
+            assertEquals("worried", lastDecision().expression)
+            assertEquals(1.0 / 3, lastDecision().expressionProbability!!, 1e-9)
+            assertEquals("rules_v4", lastDecision().policyId)
+        }
+
+    @Test
+    fun `an overlay that falls back to a notification keeps its expression`() =
+        runTest {
+            twoSnoozesAgo()
+            frictionPresenter.available = false
+            draws += listOf(0.5, 0.1, 0.1)
+
+            evaluator.evaluate(now = sessionStart + 33 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(listOf<CoachExpression?>(CoachExpression.Encouraging), frictionPresenter.expressions)
+            assertEquals(CoachExpression.Encouraging, notifier.expressions.last())
+            assertEquals("happy", lastDecision().expression)
+        }
+
+    @Test
+    fun `a held-out nudge shows no face and records none`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+            draw = 0.01
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertNull(lastDecision().expression)
+            assertNull(lastDecision().expressionProbability)
         }
 }

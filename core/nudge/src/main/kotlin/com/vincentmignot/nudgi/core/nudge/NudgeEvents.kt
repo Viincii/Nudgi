@@ -35,6 +35,7 @@ fun decisionEvent(
     config: NudgeConfig,
     nudgeId: String,
     shadow: ShadowMetadata? = null,
+    expression: CoachExpression? = null,
 ): EventEntity {
     val (eventType, candidate, reason) =
         when (decision) {
@@ -59,6 +60,8 @@ fun decisionEvent(
             escalationProbability = config.escalationProbability,
             frictionPaused = friction.paused,
             frictionFallback = friction.fallback?.id,
+            expression = expression?.id,
+            expressionProbability = expression?.let { expressionProbability(config) },
         )
     return EventEntity(
         timestamp = context.now,

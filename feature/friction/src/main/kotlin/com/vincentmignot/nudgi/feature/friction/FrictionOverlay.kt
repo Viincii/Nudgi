@@ -34,13 +34,14 @@ import com.vincentmignot.nudgi.core.nudge.R as NudgeR
 private const val SECOND_MS = 1_000L
 
 /**
- * Drawn over a watched app: Nudgi, worried, with the nudge's message. "I'll stop" is the main
+ * Drawn over a watched app: Nudgi, with the expression the coach chose, and the nudge's message. "I'll stop" is the main
  * action. "5 more minutes" stays locked for [countdownMs], shown as a countdown, when there is one.
  */
 @Composable
 fun FrictionOverlay(
     title: String,
     message: String,
+    mood: MascotMood,
     countdownMs: Long,
     onStop: () -> Unit,
     onSnooze: () -> Unit,
@@ -64,7 +65,7 @@ fun FrictionOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                NudgiMascot(mood = MascotMood.Worried, modifier = Modifier.widthIn(max = 160.dp).fillMaxWidth())
+                NudgiMascot(mood = mood, modifier = Modifier.widthIn(max = 160.dp).fillMaxWidth())
                 Text(text = title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
                 Text(text = message, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
                 Button(onClick = onStop, modifier = Modifier.fillMaxWidth()) {
@@ -91,6 +92,7 @@ private fun FrictionOverlayPreview() {
         FrictionOverlay(
             title = "Hey, it's Nudgi",
             message = "Your five more minutes on Instagram are up.",
+            mood = MascotMood.Worried,
             countdownMs = 10_000L,
             onStop = {},
             onSnooze = {},

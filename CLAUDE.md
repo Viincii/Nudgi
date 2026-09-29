@@ -34,7 +34,7 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:accessibility` | `NudgiAccessibilityService` (foreground app changes, friction overlays, going home), permission check | nothing |
 | `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats` | `core:database` |
 | `core:bandit` | The bandit reward, features and linear Thompson sampling, pure Kotlin | nothing |
-| `core:nudge` | Rule-based nudges: rules, notification, nudge events, the shadow bandit's choice | `core:bandit`, `core:database`, `core:usagestats` |
+| `core:nudge` | Rule-based nudges: rules, notification, nudge events, coach expression, the shadow bandit's choice | `core:bandit`, `core:database`, `core:mascot`, `core:usagestats` |
 | `core:today` | Today's summary and the mood derived from it, shared by the home screen and the widget | `core:database`, `core:mascot`, `core:nudge`, `core:usagestats` |
 | `core:export` | Writes the database to a zip (JSON Lines, CSV, manifest) for a user-initiated export | `core:database` |
 | `feature:friction` | The friction overlay drawn in the accessibility service's window, and the forced close | `core:accessibility`, `core:nudge` |
@@ -75,7 +75,7 @@ Friction cannot be checked through UI automation, which unbinds the accessibilit
 level on demand, without recording anything (`DebugFrictionReceiver`):
 
 ```bash
-adb shell am broadcast -n com.vincentmignot.nudgi/com.vincentmignot.nudgi.feature.friction.DebugFrictionReceiver --ei level 1 --es package com.instagram.android
+adb shell am broadcast -n com.vincentmignot.nudgi/com.vincentmignot.nudgi.feature.friction.DebugFrictionReceiver --ei level 1 --es package com.instagram.android --es expression happy
 ```
 
 CI (`.github/workflows/ci.yml`) runs spotlessCheck, lintDebug, testDebugUnitTest and assembleDebug with
@@ -98,7 +98,8 @@ CI (`.github/workflows/ci.yml`) runs spotlessCheck, lintDebug, testDebugUnitTest
 Drawn in code with Compose primitives (`docs/decisions/0002`): flat blob, pill-shaped eyes, tiny antenna, no mouth. A
 `MascotMood` maps to continuous `MascotFace` parameters that are spring-animated. Do not copy code or assets from AGPL
 projects that inspired the style. Glance widgets cannot host a Compose `Canvas`, so `renderMascot` draws the same
-code into a bitmap (see `docs/decisions/0013`).
+code into a bitmap (see `docs/decisions/0013`), which notifications also use. The home screen and the widget mirror
+the day; interventions show a coach expression drawn at random for now (see `docs/decisions/0021`).
 
 ## Roadmap
 

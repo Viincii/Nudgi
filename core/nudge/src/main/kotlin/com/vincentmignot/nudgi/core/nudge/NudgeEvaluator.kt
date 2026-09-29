@@ -61,19 +61,33 @@ class NudgeEvaluator
             val candidate = decision.candidate ?: return nextEvaluationAt(context, config, zone)
             var friction = decideFriction(context, candidate, config, holdoutDraw.next())
 
+            // Drawn once, only for an intervention that shows Nudgi, and kept if an overlay falls
+            // back to a notification.
+            var drawn: CoachExpression? = null
+            val expression = { drawn ?: drawExpression(config, holdoutDraw.next()).also { drawn = it } }
+
             val nudgeId = UUID.randomUUID().toString()
             if (decision is NudgeDecision.Show && friction.applied != FrictionLevel.Notification) {
-                val presented = frictionPresenter.present(nudgeId, candidate, context, friction.applied)
+                val face = if (friction.applied == FrictionLevel.ForcedClose) null else expression()
+                val presented = frictionPresenter.present(nudgeId, candidate, context, friction.applied, face)
                 if (!presented) friction = friction.fallingBack(FrictionFallback.ServiceUnavailable)
             }
             val notifies = decision is NudgeDecision.Show && friction.applied == FrictionLevel.Notification
             if (notifies && !notifier.canNotify()) {
                 decision = NudgeDecision.Suppress(candidate, SuppressionReason.NotificationsDisabled)
             }
+            val shown =
+                if (decision is NudgeDecision.Show &&
+                    friction.applied != FrictionLevel.ForcedClose
+                ) {
+                    expression()
+                } else {
+                    null
+                }
 
             val shadow = shadowChoice(context, candidate, zone)
-            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId, shadow))
-            if (decision is NudgeDecision.Show && notifies) notifier.show(nudgeId, candidate, context)
+            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId, shadow, shown))
+            if (shown != null && notifies) notifier.show(nudgeId, candidate, context, shown)
             return nextEvaluationAt(context.including(decision, friction, nudgeId), config, zone)
         }
 

@@ -6,7 +6,9 @@ import androidx.compose.ui.platform.ComposeView
 import com.vincentmignot.nudgi.core.accessibility.AccessibilityActions
 import com.vincentmignot.nudgi.core.accessibility.Overlay
 import com.vincentmignot.nudgi.core.designsystem.NudgiTheme
+import com.vincentmignot.nudgi.core.mascot.MascotMood
 import com.vincentmignot.nudgi.core.nudge.AppLabels
+import com.vincentmignot.nudgi.core.nudge.CoachExpression
 import com.vincentmignot.nudgi.core.nudge.FrictionLevel
 import com.vincentmignot.nudgi.core.nudge.FrictionPresenter
 import com.vincentmignot.nudgi.core.nudge.NudgeCandidate
@@ -59,6 +61,7 @@ class OverlayFrictionPresenter
             candidate: NudgeCandidate,
             nudgeContext: NudgeContext,
             level: FrictionLevel,
+            expression: CoachExpression?,
         ): Boolean =
             withContext(Dispatchers.Main.immediate) {
                 current?.remove()
@@ -68,12 +71,8 @@ class OverlayFrictionPresenter
                     }
 
                     FrictionLevel.Overlay, FrictionLevel.CountdownOverlay -> {
-                        showOverlay(
-                            nudgeId,
-                            candidate,
-                            nudgeContext,
-                            level,
-                        )
+                        val mood = checkNotNull(expression) { "An overlay shows Nudgi" }.mood
+                        showOverlay(nudgeId, candidate, nudgeContext, level, mood)
                     }
 
                     FrictionLevel.ForcedClose -> {
@@ -87,12 +86,14 @@ class OverlayFrictionPresenter
             candidate: NudgeCandidate,
             nudgeContext: NudgeContext,
             level: FrictionLevel,
+            mood: MascotMood,
         ): Boolean {
             val packageName = nudgeContext.packageName
             return showOverlay(
                 packageName = packageName,
                 message = messages.message(candidate, nudgeContext),
                 level = level,
+                mood = mood,
                 onStop = { respond(nudgeId, packageName, NudgeResponse.Stop) },
                 onSnooze = { respond(nudgeId, packageName, NudgeResponse.Snooze) },
             )
@@ -105,6 +106,7 @@ class OverlayFrictionPresenter
         internal fun preview(
             packageName: String,
             level: FrictionLevel,
+            mood: MascotMood,
         ): Boolean =
             when (level) {
                 FrictionLevel.Notification -> {
@@ -118,7 +120,7 @@ class OverlayFrictionPresenter
                 FrictionLevel.Overlay, FrictionLevel.CountdownOverlay -> {
                     current?.remove()
                     val dismiss = { current?.remove() ?: Unit }
-                    showOverlay(packageName, "Preview of the friction overlay.", level, dismiss, dismiss)
+                    showOverlay(packageName, "Preview of the friction overlay.", level, mood, dismiss, dismiss)
                 }
             }
 
@@ -126,6 +128,7 @@ class OverlayFrictionPresenter
             packageName: String,
             message: String,
             level: FrictionLevel,
+            mood: MascotMood,
             onStop: () -> Unit,
             onSnooze: () -> Unit,
         ): Boolean {
@@ -144,6 +147,7 @@ class OverlayFrictionPresenter
                                     FrictionOverlay(
                                         title = title,
                                         message = message,
+                                        mood = mood,
                                         countdownMs = countdownMs,
                                         onStop = onStop,
                                         onSnooze = onSnooze,
