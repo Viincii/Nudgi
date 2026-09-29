@@ -2,6 +2,7 @@ package com.vincentmignot.nudgi.core.nudge
 
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_FOREGROUND
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_FRICTION_PAUSED
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_RESPONSE
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SHOWN
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SUPPRESSED
@@ -63,8 +64,15 @@ fun buildNudgeContext(
         localHour = local.hour,
         weekday = local.dayOfWeek.value,
         pastNudges = pastNudges(events),
+        frictionPausedUntil = frictionPausedUntil(events),
     )
 }
+
+/** End of the latest friction pause in [events]: a pause starts at its timestamp and lasts its duration. */
+fun frictionPausedUntil(events: List<EventEntity>): Long? =
+    events
+        .filter { it.eventType == EVENT_TYPE_FRICTION_PAUSED }
+        .maxOfOrNull { it.timestamp + it.durationMs }
 
 /**
  * The foreground app as of the last foreground/background event, or null if the last one sent an
@@ -156,6 +164,7 @@ fun pastNudges(events: List<EventEntity>): List<PastNudge> {
             shown = shown,
             response = response?.first,
             respondedAt = response?.second,
+            frictionLevel = FrictionLevel.fromValue(metadata.frictionLevel) ?: FrictionLevel.Notification,
         )
     }
 }

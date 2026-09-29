@@ -11,6 +11,7 @@ import com.vincentmignot.nudgi.core.database.EventEntity
 /** The `nudge_shown` or `nudge_suppressed` row for [decision], which must not be [NudgeDecision.None]. */
 fun decisionEvent(
     decision: NudgeDecision,
+    friction: FrictionDecision,
     context: NudgeContext,
     config: NudgeConfig,
     nudgeId: String,
@@ -41,6 +42,11 @@ fun decisionEvent(
                     nudgesToday = context.nudgesShownToday,
                     msSinceLastNudge = context.lastShownAt?.let { context.now - it },
                 ),
+            frictionLevel = friction.applied.value,
+            requestedFrictionLevel = friction.requested.value,
+            escalationProbability = config.escalationProbability,
+            frictionPaused = friction.paused,
+            frictionFallback = friction.fallback?.id,
         )
     return EventEntity(
         timestamp = context.now,
@@ -80,6 +86,7 @@ fun pendingOutcomeEvents(
         .filter { it.nudgeId !in recorded && now >= it.timestamp + config.outcomeWindowMs + config.sessionMergeGapMs }
         .map { nudge ->
             val leftAt = leftAppAt(events, nudge.packageName, nudge.timestamp, config)
+            val reopenedAt = leftAt?.let { reopenedAppAt(events, nudge.packageName, it, nudge.timestamp, config) }
             EventEntity(
                 timestamp = now,
                 eventType = EVENT_TYPE_NUDGE_OUTCOME,
@@ -92,6 +99,8 @@ fun pendingOutcomeEvents(
                             leftApp = leftAt != null,
                             leftAfterMs = leftAt?.let { it - nudge.timestamp },
                             windowMs = config.outcomeWindowMs,
+                            reopened = reopenedAt != null,
+                            reopenedAfterMs = reopenedAt?.let { it - nudge.timestamp },
                         ),
                     ),
             )
@@ -129,3 +138,19 @@ private fun leftAppAt(
             }
         }?.timestamp
 }
+
+/** The first time [packageName] came back to the foreground after [leftAt], within the outcome window of [since]. */
+private fun reopenedAppAt(
+    events: List<EventEntity>,
+    packageName: String,
+    leftAt: Long,
+    since: Long,
+    config: NudgeConfig,
+): Long? =
+    events
+        .firstOrNull {
+            it.packageName == packageName &&
+                it.eventType == EVENT_TYPE_APP_FOREGROUND &&
+                it.timestamp > leftAt &&
+                it.timestamp <= since + config.outcomeWindowMs
+        }?.timestamp

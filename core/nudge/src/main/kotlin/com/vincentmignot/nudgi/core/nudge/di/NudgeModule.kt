@@ -3,6 +3,8 @@ package com.vincentmignot.nudgi.core.nudge.di
 import com.vincentmignot.nudgi.core.nudge.AndroidNudgeNotifier
 import com.vincentmignot.nudgi.core.nudge.AppLabels
 import com.vincentmignot.nudgi.core.nudge.CategoryWatchedApps
+import com.vincentmignot.nudgi.core.nudge.EventFrictionPause
+import com.vincentmignot.nudgi.core.nudge.FrictionPause
 import com.vincentmignot.nudgi.core.nudge.HoldoutDraw
 import com.vincentmignot.nudgi.core.nudge.NudgeConfig
 import com.vincentmignot.nudgi.core.nudge.NudgeNotifier
@@ -26,6 +28,9 @@ abstract class NudgeModule {
 
     @Binds
     abstract fun bindAppLabels(impl: PackageManagerAppLabels): AppLabels
+
+    @Binds
+    abstract fun bindFrictionPause(impl: EventFrictionPause): FrictionPause
 
     @Binds
     abstract fun bindHoldoutDraw(impl: RandomHoldoutDraw): HoldoutDraw

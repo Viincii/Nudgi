@@ -8,11 +8,12 @@ import kotlinx.serialization.json.Json
 // column naming, and they are the contract the on-device model will be trained on: rename with care.
 
 /**
- * The policy that took every decision recorded from this build: the rules of [NudgeConfig]. Rows
- * recorded before the field existed have none, and were taken by the same rules. Bump it whenever
- * the way decisions are taken changes, so the data of each policy can be told apart.
+ * The policy that took every decision recorded from this build: the rules of [NudgeConfig]. Bump it
+ * whenever the way decisions are taken changes, so the data of each policy can be told apart. Rows
+ * recorded before the field existed have none; they were taken by `rules_v1`, the rules without
+ * friction.
  */
-const val RULES_POLICY_ID = "rules_v1"
+const val RULES_POLICY_ID = "rules_v2"
 
 /** Metadata of `nudge_shown` and `nudge_suppressed`. */
 @Serializable
@@ -29,6 +30,14 @@ data class NudgeDecisionMetadata(
     /** Logged on every decision so the propensity of each action can be recovered offline. */
     @SerialName("holdout_probability") val holdoutProbability: Double,
     val context: NudgeContextSnapshot,
+    // The friction fields are null on rows recorded before friction existed, which were all
+    // notifications. See FrictionDecision.
+    @SerialName("friction_level") val frictionLevel: Int? = null,
+    @SerialName("requested_friction_level") val requestedFrictionLevel: Int? = null,
+    /** Logged on every decision, like [holdoutProbability]; it only applied when the level requested was higher. */
+    @SerialName("escalation_probability") val escalationProbability: Double? = null,
+    @SerialName("friction_paused") val frictionPaused: Boolean? = null,
+    @SerialName("friction_fallback") val frictionFallback: String? = null,
 )
 
 @Serializable
@@ -56,6 +65,13 @@ data class NudgeOutcomeMetadata(
     @SerialName("left_app") val leftApp: Boolean,
     @SerialName("left_after_ms") val leftAfterMs: Long? = null,
     @SerialName("window_ms") val windowMs: Long,
+    /**
+     * Whether the user came back to the app within [windowMs], after leaving it. A forced close
+     * always leaves the app, so this is what tells whether it changed anything. Null on rows
+     * recorded before it was measured.
+     */
+    val reopened: Boolean? = null,
+    @SerialName("reopened_after_ms") val reopenedAfterMs: Long? = null,
 )
 
 internal val NudgeJson =

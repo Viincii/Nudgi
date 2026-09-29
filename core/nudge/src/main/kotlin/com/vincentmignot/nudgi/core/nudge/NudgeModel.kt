@@ -57,6 +57,8 @@ data class PastNudge(
     val shown: Boolean,
     val response: NudgeResponse? = null,
     val respondedAt: Long? = null,
+    /** The friction actually applied; a notification for rows recorded before friction existed. */
+    val frictionLevel: FrictionLevel = FrictionLevel.Notification,
 )
 
 /** What the rules look at: the watched app currently in the foreground and the recent history. */
@@ -75,6 +77,8 @@ data class NudgeContext(
     /** ISO day of week, 1 for Monday to 7 for Sunday. */
     val weekday: Int,
     val pastNudges: List<PastNudge>,
+    /** End of the friction pause the user asked for in Settings, if one was ever taken. */
+    val frictionPausedUntil: Long? = null,
 ) {
     val sessionMs: Long get() = now - sessionStartedAt
 
@@ -92,14 +96,19 @@ data class NudgeCandidate(
 )
 
 sealed interface NudgeDecision {
-    data object None : NudgeDecision
+    /** The rule behind the decision, or null when no rule fires. */
+    val candidate: NudgeCandidate?
+
+    data object None : NudgeDecision {
+        override val candidate: NudgeCandidate? = null
+    }
 
     data class Show(
-        val candidate: NudgeCandidate,
+        override val candidate: NudgeCandidate,
     ) : NudgeDecision
 
     data class Suppress(
-        val candidate: NudgeCandidate,
+        override val candidate: NudgeCandidate,
         val reason: SuppressionReason,
     ) : NudgeDecision
 }

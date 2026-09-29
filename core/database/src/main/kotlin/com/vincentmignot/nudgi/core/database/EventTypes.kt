@@ -12,3 +12,6 @@ const val EVENT_TYPE_NUDGE_SHOWN = "nudge_shown"
 const val EVENT_TYPE_NUDGE_SUPPRESSED = "nudge_suppressed"
 const val EVENT_TYPE_NUDGE_RESPONSE = "nudge_response"
 const val EVENT_TYPE_NUDGE_OUTCOME = "nudge_outcome"
+
+// The user paused friction from Settings: the pause starts at `timestamp` and lasts `duration_ms`.
+const val EVENT_TYPE_FRICTION_PAUSED = "friction_paused"

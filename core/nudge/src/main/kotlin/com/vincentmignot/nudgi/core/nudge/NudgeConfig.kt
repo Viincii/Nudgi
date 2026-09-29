@@ -23,4 +23,11 @@ data class NudgeConfig(
     val outcomeWindowMs: Long = 10 * MINUTE_MS,
     /** Foreground pieces of one app separated by less than this count as one session. */
     val sessionMergeGapMs: Long = MINUTE_MS,
+    /** Snoozes taken at a friction level before the next snooze follow-up asks for the level above. */
+    val snoozesPerFrictionLevel: Int = 2,
+    /** How long the "5 more minutes" button stays locked on a countdown overlay. */
+    val frictionCountdownMs: Long = 10_000L,
+    /** Probability that a higher friction level asked for by the rules is actually applied. */
+    val escalationProbability: Double = 0.8,
+    val frictionPauseMs: Long = 60 * MINUTE_MS,
 )

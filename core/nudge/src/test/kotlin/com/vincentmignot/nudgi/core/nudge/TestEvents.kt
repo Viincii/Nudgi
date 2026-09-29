@@ -11,6 +11,10 @@ const val FEED = "com.example.feed"
 const val OTHER = "com.example.other"
 const val MINUTE_MS = 60_000L
 
+/** The friction of a plain notification, for tests that are not about friction. */
+val NOTIFICATION =
+    FrictionDecision(requested = FrictionLevel.Notification, applied = FrictionLevel.Notification, paused = false)
+
 fun at(dateTime: String): Long =
     LocalDateTime
         .parse(dateTime)

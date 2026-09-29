@@ -25,7 +25,6 @@ interface NudgeNotifier {
 }
 
 private const val CHANNEL_ID = "nudges"
-private const val MINUTE_MS = 60_000L
 
 /** Whether nudges can reach the user: the runtime permission on Android 13+, and not blocked in settings. */
 fun areNudgeNotificationsEnabled(context: Context): Boolean =
@@ -37,7 +36,7 @@ class AndroidNudgeNotifier
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
-        private val appLabels: AppLabels,
+        private val messages: NudgeMessages,
     ) : NudgeNotifier {
         override fun canNotify(): Boolean = areNudgeNotificationsEnabled(context)
 
@@ -59,7 +58,7 @@ class AndroidNudgeNotifier
                     .Builder(context, CHANNEL_ID)
                     .setSmallIcon(R.drawable.ic_nudge_notification)
                     .setContentTitle(context.getString(R.string.nudge_title))
-                    .setContentText(message(candidate, nudgeContext))
+                    .setContentText(messages.message(candidate, nudgeContext))
                     .setCategory(NotificationCompat.CATEGORY_REMINDER)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setAutoCancel(true)
@@ -74,38 +73,6 @@ class AndroidNudgeNotifier
                     ).setDeleteIntent(responseIntent(nudgeId, packageName, NudgeResponse.Dismissed))
                     .build()
             NotificationManagerCompat.from(context).notify(notificationIdFor(nudgeId), notification)
-        }
-
-        private fun message(
-            candidate: NudgeCandidate,
-            nudgeContext: NudgeContext,
-        ): String {
-            val appLabel = appLabels.labelOf(nudgeContext.packageName)
-            return when (candidate.rule) {
-                NudgeRule.LongSession -> {
-                    context.getString(
-                        R.string.nudge_long_session,
-                        appLabel,
-                        (nudgeContext.sessionMs / MINUTE_MS).toInt(),
-                    )
-                }
-
-                NudgeRule.DailyBudget -> {
-                    context.getString(
-                        R.string.nudge_daily_budget,
-                        appLabel,
-                        (nudgeContext.dailyUsageMs / MINUTE_MS).toInt(),
-                    )
-                }
-
-                NudgeRule.LateNight -> {
-                    context.getString(R.string.nudge_late_night, appLabel)
-                }
-
-                NudgeRule.SnoozeFollowUp -> {
-                    context.getString(R.string.nudge_snooze_followup, appLabel)
-                }
-            }
         }
 
         private fun responseIntent(
