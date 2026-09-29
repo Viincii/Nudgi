@@ -30,9 +30,11 @@ reminded, so "nothing" is not an option there, as the holdout already never appl
 
 ### Linear Thompson sampling
 
-For each action, a Bayesian linear regression predicts the weighted benefit of 0019 from the context. To decide,
-the bandit draws one set of weights per action from its posterior, predicts each action's weighted benefit,
-subtracts the action's cost (a known value, not learned), and takes the best.
+For each action, a Bayesian linear regression predicts the benefit of 0019 from the context. To decide, the
+bandit draws one set of weights per action from its posterior, predicts each action's benefit, multiplies it by the
+night weight and subtracts the action's cost, both known values rather than learned ones, and takes the best. The
+weight depends on the context only, so applying it after the prediction gives the same expected reward as learning
+the weighted benefit, and keeps the benefit, and the prior, on the same scale day and night.
 
 - **Thompson sampling rather than UCB**: it is randomized, so every choice has a propensity. Once the bandit acts,
   its own decisions can then be evaluated offline and a later policy compared with it, which a deterministic UCB

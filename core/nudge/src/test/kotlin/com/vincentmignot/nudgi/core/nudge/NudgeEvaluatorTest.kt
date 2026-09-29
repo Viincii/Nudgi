@@ -86,10 +86,24 @@ private class FakeFrictionPresenter(
     }
 }
 
+private class FakeShadow : ShadowPolicy {
+    var failure: Exception? = null
+
+    override suspend fun choose(
+        context: NudgeContext,
+        candidate: NudgeCandidate,
+        zone: java.time.ZoneId,
+    ): ShadowMetadata {
+        failure?.let { throw it }
+        return ShadowMetadata(policyId = "test", action = "overlay", propensity = 0.3, trainedOn = 7)
+    }
+}
+
 class NudgeEvaluatorTest {
     private val eventDao = FakeEventDao()
     private val notifier = FakeNotifier()
     private val frictionPresenter = FakeFrictionPresenter()
+    private val shadow = FakeShadow()
 
     /** Draws handed out in order, holdout first then escalation; 0.5 once they run out. */
     private val draws = ArrayDeque<Double>()
@@ -106,6 +120,7 @@ class NudgeEvaluatorTest {
             watchedApps = { it == FEED },
             notifier = notifier,
             frictionPresenter = frictionPresenter,
+            shadowPolicy = shadow,
             holdoutDraw = { draws.removeFirstOrNull() ?: 0.5 },
             config = NudgeConfig(),
         )
@@ -257,5 +272,27 @@ class NudgeEvaluatorTest {
             assertEquals(emptyList<Pair<String, FrictionLevel>>(), frictionPresenter.presented)
             assertEquals(0, lastDecision().frictionLevel)
             assertEquals(1, lastDecision().requestedFrictionLevel)
+        }
+
+    @Test
+    fun `records the shadow bandit's choice next to the decision`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(ShadowMetadata("test", "overlay", 0.3, 7), lastDecision().shadow)
+        }
+
+    @Test
+    fun `a failing shadow never stops a nudge`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+            shadow.failure = IllegalStateException("broken")
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(1, notifier.shown.size)
+            assertNull(lastDecision().shadow)
         }
 }

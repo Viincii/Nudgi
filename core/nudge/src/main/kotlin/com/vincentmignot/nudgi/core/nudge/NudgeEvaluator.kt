@@ -1,6 +1,7 @@
 package com.vincentmignot.nudgi.core.nudge
 
 import com.vincentmignot.nudgi.core.database.EventDao
+import kotlinx.coroutines.CancellationException
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
@@ -38,6 +39,7 @@ class NudgeEvaluator
         private val watchedApps: WatchedApps,
         private val notifier: NudgeNotifier,
         private val frictionPresenter: FrictionPresenter,
+        private val shadowPolicy: ShadowPolicy,
         private val holdoutDraw: HoldoutDraw,
         private val config: NudgeConfig,
     ) {
@@ -69,10 +71,25 @@ class NudgeEvaluator
                 decision = NudgeDecision.Suppress(candidate, SuppressionReason.NotificationsDisabled)
             }
 
-            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId))
+            val shadow = shadowChoice(context, candidate, zone)
+            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId, shadow))
             if (decision is NudgeDecision.Show && notifies) notifier.show(nudgeId, candidate, context)
             return nextEvaluationAt(context.including(decision, friction, nudgeId), config, zone)
         }
+
+        /** The shadow bandit never acts, so its failure is recorded as a missing shadow, never allowed to stop a nudge. */
+        private suspend fun shadowChoice(
+            context: NudgeContext,
+            candidate: NudgeCandidate,
+            zone: ZoneId,
+        ): ShadowMetadata? =
+            try {
+                shadowPolicy.choose(context, candidate, zone)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
     }
 
 /** [this] context as it will look once [decision] is recorded, for scheduling what comes next. */

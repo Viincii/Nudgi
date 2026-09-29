@@ -30,6 +30,8 @@ data class NudgeDecisionMetadata(
     /** Logged on every decision so the propensity of each action can be recovered offline. */
     @SerialName("holdout_probability") val holdoutProbability: Double,
     val context: NudgeContextSnapshot,
+    /** What the shadow bandit would have done; null before it existed, or when it failed. */
+    val shadow: ShadowMetadata? = null,
     // The friction fields are null on rows recorded before friction existed, which were all
     // notifications. See FrictionDecision.
     @SerialName("friction_level") val frictionLevel: Int? = null,
@@ -49,6 +51,18 @@ data class NudgeContextSnapshot(
     val weekday: Int,
     @SerialName("nudges_today") val nudgesToday: Int,
     @SerialName("ms_since_last_nudge") val msSinceLastNudge: Long? = null,
+    // Null on rows recorded before the shadow bandit, which derives them from the events instead.
+    @SerialName("snoozes_today") val snoozesToday: Int? = null,
+    @SerialName("friction_level_reached") val frictionLevelReached: Int? = null,
+)
+
+/** The shadow bandit's choice for a decision (decision 0020); it never acts on it. */
+@Serializable
+data class ShadowMetadata(
+    @SerialName("policy_id") val policyId: String,
+    val action: String,
+    val propensity: Double,
+    @SerialName("trained_on") val trainedOn: Int,
 )
 
 /** Metadata of `nudge_response`. */
