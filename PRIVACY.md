@@ -7,7 +7,8 @@ Nudgi is built around one rule: **your data never leaves your phone.**
 Everything Nudgi observes or computes is stored in a local database on your phone:
 
 - which apps you use and for how long (usage statistics),
-- the notifications Nudgi sent and how you reacted to them,
+- the notifications and warnings Nudgi showed, the apps it closed, and how you reacted to them,
+- when you paused friction from Settings,
 - daily aggregates derived from the above.
 
 None of it is transmitted anywhere.
@@ -28,13 +29,13 @@ folder, it is synced like any other file there.
 
 ## Permissions
 
-Nudgi will ask for the following permissions as features arrive. Each one is granted by you in the system settings.
+Each permission is granted by you, from the system settings or a system prompt.
 
 | Permission | Why | Status |
 |---|---|---|
-| Usage access | Read which apps are in use and for how long, to spot doom-scrolling | Planned |
-| Notifications | Show Nudgi's reminders | Planned |
-| Accessibility service | Detect the foreground app in order to gradually block chosen apps | Planned |
+| Usage access | Read which apps are in use and for how long, to spot doom-scrolling | Requested at onboarding |
+| Notifications | Show Nudgi's reminders | Requested at onboarding |
+| Accessibility service | Notice the foreground app the moment it changes; when you keep snoozing on an app, draw a warning over it and, as a last resort, send you back to the home screen. It never reads what is on screen. | Requested at onboarding |
 
 Nudgi is distributed as an APK from GitHub rather than the Play Store, so you can inspect the source and build it yourself.
 

@@ -3,8 +3,8 @@
 A little companion that helps you cut down on doom-scrolling, remember to go to sleep, and more. Nudgi lives on your
 phone, watches how you use it, and nudges you gently, with a friendly face that reflects how things are going.
 
-> **Status:** early development. The app currently shows Nudgi and its moods; usage tracking, notifications and app
-> blocking are on the [roadmap](#roadmap).
+> **Status:** early development. Nudgi tracks usage, nudges with notifications, steps up to overlays and forced closes
+> when nudges are snoozed, and has a home screen widget. See the [roadmap](#roadmap).
 
 ![Nudgi on the home screen](docs/images/home.png)
 
@@ -20,16 +20,16 @@ phone, watches how you use it, and nudges you gently, with a friendly face that 
 
 1. [x] Mascot and app skeleton
 2. [ ] Usage tracking and rule-based nudges
-3. [ ] Home screen widget
-4. [ ] App blocking with progressive friction (gentle nudge, warning overlay, forced close as a last resort)
+3. [x] Home screen widget
+4. [x] App blocking with progressive friction (gentle nudge, warning overlay, forced close as a last resort)
 5. [ ] Lock screen widget (deferred: depends on platform support)
 6. [ ] On-device contextual bandit
 7. [ ] Watch connectivity through Health Connect
 
 ## Permissions
 
-None are requested yet. Usage access, notifications and an accessibility service will be requested as the features that
-need them land; see [PRIVACY.md](PRIVACY.md) for the reasons.
+Usage access, notifications and an accessibility service, all requested at onboarding; see [PRIVACY.md](PRIVACY.md)
+for the reasons.
 
 ## Install
 

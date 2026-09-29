@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_description">Nudgi uses this to notice which app is in the foreground, so it can nudge you at the right moment rather than minutes late. It does not read screen content and nothing leaves your device.</string>
+    <string name="accessibility_service_description">Nudgi uses this to notice which app is in the foreground, so it can nudge you at the right moment rather than minutes late. When you keep snoozing on an app, it also uses it to show a warning over that app, and as a last resort to send you back to the home screen. It does not read screen content and nothing leaves your device.</string>
 </resources>

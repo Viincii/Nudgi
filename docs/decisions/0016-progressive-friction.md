@@ -36,6 +36,11 @@ The friction level of an app goes up after **two snoozes** at the current level.
 | 2 | Same overlay, the button unlocks after a countdown (10 s) | Wait, then tap |
 | 3 | Forced close: back to the home screen | Reopen the app, which starts again at level 2 |
 
+The level an app has reached is derived from the events, not stored: it is the highest friction applied to a nudge
+shown on it today. Held-out, paused and fallen-back nudges applied less, so they never raise it. A forced close is
+one-off: after it the app is at level 2, and its snoozes are counted afresh. Reopening the app shows nothing by
+itself; the next nudge comes when a rule fires, at level 2.
+
 - Snoozes are counted **per app, since the start of the day**, not per session. A session ends after a minute
   away from the app (`sessionMergeGapMs`), so counting per session would let a quick app switch reset the ladder.
 - The level only rises on a snooze follow-up, the moment the user already chose to keep going. The other rules
@@ -66,10 +71,14 @@ Every friction decision is a nudge decision, recorded with the existing events r
 contract of 0010 stays the one the bandit reads:
 
 - `nudge_shown` and `nudge_suppressed` gain the **friction level** actually applied and the **level the rules asked
-  for**. The two differ when escalation is held out (below), or when the overlay could not be shown because the
-  accessibility service was not running. In that case the nudge falls back to a notification and records why.
-- `nudge_response` gains `continued`: the user went past an overlay, after the countdown at level 2. A forced
-  close has no response.
+  for**, the escalation probability, and whether a pause capped the level. The two levels differ when escalation is
+  held out (below), when friction is paused, or when the overlay could not be shown because the accessibility
+  service was not running. In that case the nudge falls back to a notification and records why
+  (`friction_fallback`). Friction is applied before the decision is recorded, so the row says what the user got.
+- `nudge_response` keeps its values. The overlay's buttons are the notification's, "I'll stop" and "5 more minutes",
+  and record `stop` and `snooze`: a snooze on an overlay has to bring its follow-up and count toward the next level
+  exactly like one in the shade. Leaving the app with the overlay up removes it without a response. A forced close
+  has no response.
 - `nudge_outcome` keeps "left the app within 10 minutes", and gains **whether the user reopened the app within the
   outcome window**. A forced close always "leaves the app", so for levels 2 and 3 the reopen is the only honest
   signal of what the friction changed.
@@ -98,6 +107,8 @@ follow-up.
 - **`app`**: the wiring, as for the real-time trigger. `RealtimeNudgeTrigger` delivers each decision to the
   notifier or to the overlay, depending on its level.
 
+The decisions of these rules are recorded with the policy id `rules_v2` (see [0017](0017-policy-id-on-nudge-decisions.md)).
+
 ## Consequences
 
 - The accessibility service stops being passive. It still never reads screen content, but it now draws over other
@@ -110,5 +121,8 @@ follow-up.
   overlay and the forced close have to be tested without them, or through JVM tests of the rules.
 - The pause is an escape hatch the user can take every hour. If the data shows it used as a routine, the friction is
   too strong, and that is worth knowing rather than hiding.
+- After a forced close the app is free until the next rule fires, which can be up to 15 minutes into a long
+  session. The reopen recorded in the outcome shows how often that is used; a rule on reopening would be the next
+  step if it is.
 - Play Protect already flags the app. An app that draws over others and closes them will not look better; nothing
   to do about it for a sideloaded APK.
