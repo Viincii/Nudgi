@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="settings_title">Settings</string>
+    <string name="settings_friction_title">Friction</string>
+    <string name="settings_friction_explanation">When you keep snoozing, Nudgi steps up: an overlay over the app, then a countdown, then closing it. If you really need an app right now, pause that for an hour. Nudges still come as notifications meanwhile.</string>
+    <string name="settings_friction_pause_button">Pause friction for 1 hour</string>
+    <string name="settings_friction_paused_until">Friction paused until %1$s.</string>
     <string name="settings_data_title">Your data</string>
     <string name="settings_data_explanation">Everything Nudgi records stays on this phone, and uninstalling the app deletes it. Export it to a zip file to keep a copy: you choose where it is saved, and it goes nowhere else.</string>
     <string name="settings_export_button">Export my data</string>

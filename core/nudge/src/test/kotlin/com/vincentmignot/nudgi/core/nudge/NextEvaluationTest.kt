@@ -1,6 +1,7 @@
 package com.vincentmignot.nudgi.core.nudge
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -97,9 +98,9 @@ class NextEvaluationTest {
     }
 
     @Test
-    fun `stops once the daily cap is reached`() {
-        val capped = (1..8).map { shown(NudgeRule.DailyBudget, timestamp = at("2026-09-22T08:00:00") + it * MINUTE_MS) }
+    fun `keeps scheduling however many nudges were shown today`() {
+        val many = (1..20).map { shown(NudgeRule.DailyBudget, timestamp = at("2026-09-22T08:00:00") + it * MINUTE_MS) }
 
-        assertNull(nextEvaluationAt(context(sessionMs = 5 * MINUTE_MS, pastNudges = capped), config, PARIS))
+        assertNotNull(nextEvaluationAt(context(sessionMs = 5 * MINUTE_MS, pastNudges = many), config, PARIS))
     }
 }

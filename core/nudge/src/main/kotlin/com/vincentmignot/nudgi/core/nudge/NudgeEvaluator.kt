@@ -12,7 +12,7 @@ import kotlin.random.Random
  */
 private const val HISTORY_MS = 30 * 60 * 60 * 1000L
 
-/** A uniform draw in `[0, 1)` deciding holdouts; injected so tests can pin it. */
+/** A uniform draw in `[0, 1)` deciding holdouts and escalations; injected so tests can pin it. */
 fun interface HoldoutDraw {
     fun next(): Double
 }
@@ -26,7 +26,10 @@ class RandomHoldoutDraw
 /**
  * Runs the rules against the events recorded so far: records the outcome of past nudges whose
  * window has closed, then the decision for the app in the foreground, and shows the nudge if that
- * decision is to show one.
+ * decision is to show one, as a notification or with the friction the app has reached.
+ *
+ * Friction is applied before the decision is recorded, so a nudge whose overlay could not be shown
+ * is recorded as the notification it fell back to.
  */
 class NudgeEvaluator
     @Inject
@@ -34,6 +37,7 @@ class NudgeEvaluator
         private val eventDao: EventDao,
         private val watchedApps: WatchedApps,
         private val notifier: NudgeNotifier,
+        private val frictionPresenter: FrictionPresenter,
         private val holdoutDraw: HoldoutDraw,
         private val config: NudgeConfig,
     ) {
@@ -52,21 +56,29 @@ class NudgeEvaluator
 
             val context = buildNudgeContext(events, now, zone, watchedApps::isWatched, config) ?: return null
             var decision = decideNudge(context, config, holdoutDraw.next())
-            if (decision is NudgeDecision.Show && !notifier.canNotify()) {
-                decision = NudgeDecision.Suppress(decision.candidate, SuppressionReason.NotificationsDisabled)
-            }
-            if (decision == NudgeDecision.None) return nextEvaluationAt(context, config, zone)
+            val candidate = decision.candidate ?: return nextEvaluationAt(context, config, zone)
+            var friction = decideFriction(context, candidate, config, holdoutDraw.next())
 
             val nudgeId = UUID.randomUUID().toString()
-            eventDao.insert(decisionEvent(decision, context, config, nudgeId))
-            if (decision is NudgeDecision.Show) notifier.show(nudgeId, decision.candidate, context)
-            return nextEvaluationAt(context.including(decision, nudgeId), config, zone)
+            if (decision is NudgeDecision.Show && friction.applied != FrictionLevel.Notification) {
+                val presented = frictionPresenter.present(nudgeId, candidate, context, friction.applied)
+                if (!presented) friction = friction.fallingBack(FrictionFallback.ServiceUnavailable)
+            }
+            val notifies = decision is NudgeDecision.Show && friction.applied == FrictionLevel.Notification
+            if (notifies && !notifier.canNotify()) {
+                decision = NudgeDecision.Suppress(candidate, SuppressionReason.NotificationsDisabled)
+            }
+
+            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId))
+            if (decision is NudgeDecision.Show && notifies) notifier.show(nudgeId, candidate, context)
+            return nextEvaluationAt(context.including(decision, friction, nudgeId), config, zone)
         }
     }
 
 /** [this] context as it will look once [decision] is recorded, for scheduling what comes next. */
 private fun NudgeContext.including(
     decision: NudgeDecision,
+    friction: FrictionDecision,
     nudgeId: String,
 ): NudgeContext {
     val (candidate, shown) =
@@ -83,6 +95,7 @@ private fun NudgeContext.including(
                 return this
             }
         }
-    val decided = PastNudge(nudgeId, now, packageName, candidate.rule, candidate.level, shown)
+    val decided =
+        PastNudge(nudgeId, now, packageName, candidate.rule, candidate.level, shown, frictionLevel = friction.applied)
     return copy(pastNudges = pastNudges + decided)
 }

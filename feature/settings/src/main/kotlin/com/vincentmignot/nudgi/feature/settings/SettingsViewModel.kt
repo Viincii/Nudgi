@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vincentmignot.nudgi.core.export.DataExporter
+import com.vincentmignot.nudgi.core.nudge.FrictionPause
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +18,22 @@ import javax.inject.Inject
 class SettingsViewModel
     @Inject
     constructor(
+        private val frictionPause: FrictionPause,
         private val dataExporter: DataExporter,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+        init {
+            viewModelScope.launch {
+                frictionPause.pausedUntil.collect { until -> _uiState.update { it.copy(frictionPausedUntil = until) } }
+            }
+        }
+
+        fun onPauseFrictionClick() {
+            if (_uiState.value.frictionPausedUntil != null) return
+            viewModelScope.launch { frictionPause.pause() }
+        }
 
         /** Called with the document the user created in the file picker, or null if they backed out. */
         fun onExportDestinationChosen(destination: Uri?) {

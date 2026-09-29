@@ -70,17 +70,43 @@ private class FakeNotifier(
     }
 }
 
+private class FakeFrictionPresenter(
+    var available: Boolean = true,
+) : FrictionPresenter {
+    val presented = mutableListOf<Pair<String, FrictionLevel>>()
+
+    override suspend fun present(
+        nudgeId: String,
+        candidate: NudgeCandidate,
+        nudgeContext: NudgeContext,
+        level: FrictionLevel,
+    ): Boolean {
+        if (available) presented += nudgeId to level
+        return available
+    }
+}
+
 class NudgeEvaluatorTest {
     private val eventDao = FakeEventDao()
     private val notifier = FakeNotifier()
-    private var draw = 0.5
+    private val frictionPresenter = FakeFrictionPresenter()
+
+    /** Draws handed out in order, holdout first then escalation; 0.5 once they run out. */
+    private val draws = ArrayDeque<Double>()
+    private var draw: Double
+        get() = error("Write only")
+        set(value) {
+            draws.clear()
+            draws += value
+        }
 
     private val evaluator =
         NudgeEvaluator(
             eventDao = eventDao,
             watchedApps = { it == FEED },
             notifier = notifier,
-            holdoutDraw = { draw },
+            frictionPresenter = frictionPresenter,
+            holdoutDraw = { draws.removeFirstOrNull() ?: 0.5 },
             config = NudgeConfig(),
         )
 
@@ -165,5 +191,71 @@ class NudgeEvaluatorTest {
 
             assertEquals(1, eventDao.events.size)
             assertNull(next)
+        }
+
+    /** Two snoozed notifications in the current session, so the next follow-up asks for an overlay. */
+    private suspend fun twoSnoozesAgo() {
+        eventDao.insert(foreground(sessionStart))
+        evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+        val first = notifier.shown.last().first
+        eventDao.insert(responseEvent(first, FEED, NudgeResponse.Snooze, sessionStart + 22 * MINUTE_MS))
+        evaluator.evaluate(now = sessionStart + 27 * MINUTE_MS, zone = PARIS)
+        val second = notifier.shown.last().first
+        eventDao.insert(responseEvent(second, FEED, NudgeResponse.Snooze, sessionStart + 28 * MINUTE_MS))
+    }
+
+    private fun lastDecision() = NudgeJson.decodeFromString<NudgeDecisionMetadata>(decisions().last().metadata)
+
+    @Test
+    fun `presents an overlay once the ladder asks for one`() =
+        runTest {
+            twoSnoozesAgo()
+
+            evaluator.evaluate(now = sessionStart + 33 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(FrictionLevel.Overlay, frictionPresenter.presented.single().second)
+            assertEquals(2, notifier.shown.size)
+            assertEquals(1, lastDecision().frictionLevel)
+            assertEquals(EVENT_TYPE_NUDGE_SHOWN, decisions().last().eventType)
+        }
+
+    @Test
+    fun `falls back to a notification when the overlay cannot be shown`() =
+        runTest {
+            twoSnoozesAgo()
+            frictionPresenter.available = false
+
+            evaluator.evaluate(now = sessionStart + 33 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(3, notifier.shown.size)
+            val metadata = lastDecision()
+            assertEquals(0, metadata.frictionLevel)
+            assertEquals(1, metadata.requestedFrictionLevel)
+            assertEquals("service_unavailable", metadata.frictionFallback)
+        }
+
+    @Test
+    fun `an overlay does not need notifications`() =
+        runTest {
+            twoSnoozesAgo()
+            notifier.enabled = false
+
+            evaluator.evaluate(now = sessionStart + 33 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(EVENT_TYPE_NUDGE_SHOWN, decisions().last().eventType)
+            assertEquals(1, frictionPresenter.presented.size)
+        }
+
+    @Test
+    fun `a held-out escalation stays a notification`() =
+        runTest {
+            twoSnoozesAgo()
+            draws += listOf(0.5, 0.9)
+
+            evaluator.evaluate(now = sessionStart + 33 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(emptyList<Pair<String, FrictionLevel>>(), frictionPresenter.presented)
+            assertEquals(0, lastDecision().frictionLevel)
+            assertEquals(1, lastDecision().requestedFrictionLevel)
         }
 }

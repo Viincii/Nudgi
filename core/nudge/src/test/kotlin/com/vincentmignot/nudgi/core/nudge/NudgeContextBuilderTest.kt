@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.database.EVENT_TYPE_FRICTION_PAUSED
 import com.vincentmignot.nudgi.core.database.EventEntity
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -89,15 +90,17 @@ class NudgeContextBuilderTest {
         val candidate = NudgeCandidate(NudgeRule.LongSession, 1, 20 * MINUTE_MS)
         val events =
             listOf(
-                decisionEvent(NudgeDecision.Show(candidate), decisionContext, config, "shown"),
+                decisionEvent(NudgeDecision.Show(candidate), NOTIFICATION, decisionContext, config, "shown"),
                 decisionEvent(
                     NudgeDecision.Suppress(candidate, SuppressionReason.Holdout),
+                    NOTIFICATION,
                     decisionContext,
                     config,
                     "held-out",
                 ),
                 decisionEvent(
                     NudgeDecision.Suppress(candidate, SuppressionReason.Cooldown),
+                    NOTIFICATION,
                     decisionContext,
                     config,
                     "cooldown",
@@ -111,5 +114,22 @@ class NudgeContextBuilderTest {
         assertEquals(listOf(true, false), past.map { it.shown })
         assertEquals(NudgeResponse.Snooze, past[0].response)
         assertEquals(now + MINUTE_MS, past[0].respondedAt)
+    }
+
+    @Test
+    fun `the latest friction pause ends after its duration`() {
+        val start = at("2026-09-22T12:00:00")
+        val pause = { at: Long ->
+            EventEntity(
+                timestamp = at,
+                eventType = EVENT_TYPE_FRICTION_PAUSED,
+                packageName = null,
+                durationMs = 60 * MINUTE_MS,
+                metadata = "{}",
+            )
+        }
+
+        assertEquals(start + 70 * MINUTE_MS, frictionPausedUntil(listOf(pause(start), pause(start + 10 * MINUTE_MS))))
+        assertNull(frictionPausedUntil(emptyList()))
     }
 }

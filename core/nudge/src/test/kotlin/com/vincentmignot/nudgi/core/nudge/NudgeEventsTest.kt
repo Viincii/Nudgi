@@ -29,24 +29,67 @@ class NudgeEventsTest {
         )
 
     private fun shown(id: String = "n1") =
-        decisionEvent(NudgeDecision.Show(NudgeCandidate(NudgeRule.LongSession, 1, 20 * MINUTE_MS)), context, config, id)
+        decisionEvent(
+            NudgeDecision.Show(NudgeCandidate(NudgeRule.LongSession, 1, 20 * MINUTE_MS)),
+            NOTIFICATION,
+            context,
+            config,
+            id,
+        )
 
     private fun outcomeOf(event: EventEntity) = NudgeJson.decodeFromString<NudgeOutcomeMetadata>(event.metadata)
 
     @Test
     fun `decision metadata carries the rule, the propensity and the context`() {
         val candidate = NudgeCandidate(NudgeRule.DailyBudget, 1, 60 * MINUTE_MS)
-        val event = decisionEvent(NudgeDecision.Suppress(candidate, SuppressionReason.Holdout), context, config, "n1")
+        val event =
+            decisionEvent(
+                NudgeDecision.Suppress(candidate, SuppressionReason.Holdout),
+                NOTIFICATION,
+                context,
+                config,
+                "n1",
+            )
         val json = Json.parseToJsonElement(event.metadata).jsonObject
 
         assertEquals("nudge_suppressed", event.eventType)
+        assertEquals("rules_v3", json.getValue("policy_id").jsonPrimitive.content)
         assertEquals("daily_budget", json.getValue("rule_id").jsonPrimitive.content)
         assertEquals("holdout", json.getValue("reason").jsonPrimitive.content)
-        assertEquals("0.1", json.getValue("holdout_probability").jsonPrimitive.content)
+        assertEquals("0.5", json.getValue("holdout_probability").jsonPrimitive.content)
         val snapshot = json.getValue("context").jsonObject
         assertEquals("1500000", snapshot.getValue("session_ms").jsonPrimitive.content)
         assertEquals("4200000", snapshot.getValue("daily_ms").jsonPrimitive.content)
         assertFalse("absent values are left out", "ms_since_last_nudge" in snapshot)
+    }
+
+    @Test
+    fun `decision metadata recorded before policies were identified still decodes`() {
+        val legacy =
+            """{"nudge_id":"n1","rule_id":"long_session","level":1,"threshold_ms":1200000,""" +
+                """"holdout_probability":0.1,"context":{"session_ms":0,"daily_ms":0,"late_night_ms":0,""" +
+                """"local_hour":12,"weekday":2,"nudges_today":0}}"""
+
+        assertNull(NudgeJson.decodeFromString<NudgeDecisionMetadata>(legacy).policyId)
+    }
+
+    @Test
+    fun `decision metadata records the friction requested and applied`() {
+        val candidate = NudgeCandidate(NudgeRule.SnoozeFollowUp, 1, 5 * MINUTE_MS)
+        val friction =
+            FrictionDecision(requested = FrictionLevel.Overlay, applied = FrictionLevel.Notification, paused = false)
+                .fallingBack(FrictionFallback.ServiceUnavailable)
+
+        val metadata =
+            NudgeJson.decodeFromString<NudgeDecisionMetadata>(
+                decisionEvent(NudgeDecision.Show(candidate), friction, context, config, "n1").metadata,
+            )
+
+        assertEquals(0, metadata.frictionLevel)
+        assertEquals(1, metadata.requestedFrictionLevel)
+        assertEquals(0.8, metadata.escalationProbability)
+        assertEquals(false, metadata.frictionPaused)
+        assertEquals("service_unavailable", metadata.frictionFallback)
     }
 
     @Test
@@ -65,6 +108,37 @@ class NudgeEventsTest {
         assertEquals(EVENT_TYPE_NUDGE_OUTCOME, outcomes.single().eventType)
         assertTrue(outcomeOf(outcomes.single()).leftApp)
         assertEquals(3 * MINUTE_MS, outcomeOf(outcomes.single()).leftAfterMs)
+        assertEquals(false, outcomeOf(outcomes.single()).reopened)
+    }
+
+    @Test
+    fun `outcome records when the user came back within the window`() {
+        val events =
+            listOf(
+                shown(),
+                background(shownAt + 3 * MINUTE_MS, 28 * MINUTE_MS),
+                foreground(shownAt + 7 * MINUTE_MS),
+            )
+
+        val outcome = outcomeOf(pendingOutcomeEvents(events, shownAt + 12 * MINUTE_MS, config).single())
+
+        assertTrue(outcome.leftApp)
+        assertEquals(true, outcome.reopened)
+        assertEquals(7 * MINUTE_MS, outcome.reopenedAfterMs)
+    }
+
+    @Test
+    fun `coming back after the window is not a reopen`() {
+        val events =
+            listOf(
+                shown(),
+                background(shownAt + 3 * MINUTE_MS, 28 * MINUTE_MS),
+                foreground(shownAt + 11 * MINUTE_MS),
+            )
+
+        val outcome = outcomeOf(pendingOutcomeEvents(events, shownAt + 12 * MINUTE_MS, config).single())
+
+        assertEquals(false, outcome.reopened)
     }
 
     @Test

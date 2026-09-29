@@ -12,7 +12,7 @@ private const val MIN_DELAY_MS = 60_000L
 /**
  * When the rules should next be evaluated if the user stays in [NudgeContext.packageName]: the
  * earliest instant at which a rule not handled yet would fire, pushed back to the end of the
- * cooldown. Null once the daily cap is reached. The result is only a wake-up time: whatever
+ * cooldown. The result is only a wake-up time: whatever
  * happened in between, the evaluation at that instant decides again from the events.
  */
 fun nextEvaluationAt(
@@ -20,8 +20,6 @@ fun nextEvaluationAt(
     config: NudgeConfig,
     zone: ZoneId,
 ): Long? {
-    if (context.nudgesShownToday >= config.dailyCap) return null
-
     val snoozeFollowUpAt = snoozeFollowUpAt(context, config)
     val otherRulesAt =
         listOfNotNull(

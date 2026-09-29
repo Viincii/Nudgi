@@ -178,7 +178,7 @@ class NudgeRulesTest {
 
     @Test
     fun `decide holds out a nudge when the draw falls under the holdout probability`() {
-        val decision = decideNudge(context(sessionMs = 20 * MINUTE), config, holdoutDraw = 0.05)
+        val decision = decideNudge(context(sessionMs = 20 * MINUTE), config, holdoutDraw = 0.45)
 
         assertEquals(SuppressionReason.Holdout, (decision as NudgeDecision.Suppress).reason)
     }
@@ -194,13 +194,13 @@ class NudgeRulesTest {
     }
 
     @Test
-    fun `decide stops at the daily cap`() {
+    fun `decide has no daily cap`() {
         val ctx = context(sessionMs = 20 * MINUTE)
-        val shownToday = (1..8).map { past(NudgeRule.DailyBudget, timestamp = DAY_START + it * MINUTE, id = "n$it") }
+        val shownToday = (1..20).map { past(NudgeRule.DailyBudget, timestamp = DAY_START + it * MINUTE, id = "n$it") }
 
-        val decision = decideNudge(ctx.copy(pastNudges = shownToday), config, holdoutDraw = 0.5)
+        val decision = decideNudge(ctx.copy(pastNudges = shownToday), config, holdoutDraw = 0.9)
 
-        assertEquals(SuppressionReason.DailyCap, (decision as NudgeDecision.Suppress).reason)
+        assertEquals(NudgeRule.LongSession, (decision as NudgeDecision.Show).candidate.rule)
     }
 
     @Test

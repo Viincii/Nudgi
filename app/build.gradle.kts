@@ -43,6 +43,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(project(":core:nudge"))
     implementation(project(":core:usagestats"))
+    implementation(project(":feature:friction"))
     implementation(project(":feature:home"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:settings"))

@@ -31,11 +31,12 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:designsystem` | Theme (`NudgiTheme`), shared UI | nothing |
 | `core:mascot` | `NudgiMascot`, `MascotMood`, `MascotFace` | nothing |
 | `core:database` | Room database (`events`, `daily_stats`) | nothing |
-| `core:accessibility` | `NudgiAccessibilityService` (foreground app changes), permission check | nothing |
+| `core:accessibility` | `NudgiAccessibilityService` (foreground app changes, friction overlays, going home), permission check | nothing |
 | `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats` | `core:database` |
 | `core:nudge` | Rule-based nudges: rules, notification, nudge events | `core:database`, `core:usagestats` |
 | `core:today` | Today's summary and the mood derived from it, shared by the home screen and the widget | `core:database`, `core:mascot`, `core:nudge`, `core:usagestats` |
 | `core:export` | Writes the database to a zip (JSON Lines, CSV, manifest) for a user-initiated export | `core:database` |
+| `feature:friction` | The friction overlay drawn in the accessibility service's window, and the forced close | `core:accessibility`, `core:nudge` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
 | `build-logic` | Convention plugins (`nudgi.android.*`) | n/a |
 
@@ -61,6 +62,13 @@ Exported Room schemas go in `core/database/schemas/` and are committed.
 ./gradlew lintDebug
 ./gradlew spotlessCheck        # spotlessApply to fix
 ./gradlew assembleRelease -PwarningsAsErrors=true
+```
+
+Friction cannot be checked through UI automation, which unbinds the accessibility service. A debug build shows any
+level on demand, without recording anything (`DebugFrictionReceiver`):
+
+```bash
+adb shell am broadcast -n com.vincentmignot.nudgi/com.vincentmignot.nudgi.feature.friction.DebugFrictionReceiver --ei level 1 --es package com.instagram.android
 ```
 
 CI (`.github/workflows/ci.yml`) runs spotlessCheck, lintDebug, testDebugUnitTest and assembleDebug with
@@ -90,7 +98,7 @@ code into a bitmap (see `docs/decisions/0013`).
 1. Mascot + skeleton (done)
 2. Usage tracking + rule-based logic (data-collection phase)
 3. Home screen widget (done)
-4. App blocking with progressive friction: soft friction, warning overlay, forced close as a last resort
+4. App blocking with progressive friction: soft friction, warning overlay, forced close as a last resort (done)
 5. Lock screen widget (deferred: the Nothing Phone (1) lacks the Android 16 QPR1 lock screen widget API)
 6. On-device contextual bandit
 7. Watch connectivity via Health Connect
@@ -98,6 +106,5 @@ code into a bitmap (see `docs/decisions/0013`).
 
 ## Next up
 
-- Sideload a debug build onto the Nothing Phone (1) to start collecting real usage and nudge data.
-- App blocking with progressive friction (roadmap step 4).
+- A shadow bandit: computes its own decision next to the rules' and records it, without acting.
 - Import an export back into the database (see `docs/decisions/0014`).

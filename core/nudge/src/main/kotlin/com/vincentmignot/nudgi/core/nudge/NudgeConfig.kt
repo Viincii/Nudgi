@@ -18,9 +18,19 @@ data class NudgeConfig(
     val lateNightThresholdMs: Long = 10 * MINUTE_MS,
     val snoozeMs: Long = 5 * MINUTE_MS,
     val cooldownMs: Long = 10 * MINUTE_MS,
-    val dailyCap: Int = 8,
-    val holdoutProbability: Double = 0.1,
+    /**
+     * High on purpose while Nudgi collects data for the model: half of the nudges that would be
+     * shown form the control group, so the effect of a nudge can be measured within weeks.
+     */
+    val holdoutProbability: Double = 0.5,
     val outcomeWindowMs: Long = 10 * MINUTE_MS,
     /** Foreground pieces of one app separated by less than this count as one session. */
     val sessionMergeGapMs: Long = MINUTE_MS,
+    /** Snoozes taken at a friction level before the next snooze follow-up asks for the level above. */
+    val snoozesPerFrictionLevel: Int = 2,
+    /** How long the "5 more minutes" button stays locked on a countdown overlay. */
+    val frictionCountdownMs: Long = 10_000L,
+    /** Probability that a higher friction level asked for by the rules is actually applied. */
+    val escalationProbability: Double = 0.8,
+    val frictionPauseMs: Long = 60 * MINUTE_MS,
 )

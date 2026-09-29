@@ -1,7 +1,9 @@
 package com.vincentmignot.nudgi.pipeline
 
 import com.vincentmignot.nudgi.core.accessibility.ForegroundAppListener
+import com.vincentmignot.nudgi.core.nudge.FrictionPresenter
 import com.vincentmignot.nudgi.core.nudge.NudgeResponseListener
+import com.vincentmignot.nudgi.feature.friction.OverlayFrictionPresenter
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,4 +17,7 @@ abstract class PipelineModule {
 
     @Binds
     abstract fun bindNudgeResponseListener(impl: RealtimeNudgeTrigger): NudgeResponseListener
+
+    @Binds
+    abstract fun bindFrictionPresenter(impl: OverlayFrictionPresenter): FrictionPresenter
 }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="friction_snooze_countdown">5 more minutes (%1$d)</string>
+    <string name="friction_closed">Nudgi closed %1$s. Take a breath.</string>
+</resources>

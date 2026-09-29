@@ -3,6 +3,8 @@ package com.vincentmignot.nudgi.core.today
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_OUTCOME
 import com.vincentmignot.nudgi.core.database.EventEntity
+import com.vincentmignot.nudgi.core.nudge.FrictionDecision
+import com.vincentmignot.nudgi.core.nudge.FrictionLevel
 import com.vincentmignot.nudgi.core.nudge.NudgeCandidate
 import com.vincentmignot.nudgi.core.nudge.NudgeConfig
 import com.vincentmignot.nudgi.core.nudge.NudgeContext
@@ -49,13 +51,21 @@ private fun contextAt(
 )
 
 private val longSession = NudgeCandidate(NudgeRule.LongSession, level = 1, thresholdMs = 20 * MINUTE_MS)
+private val notification =
+    FrictionDecision(requested = FrictionLevel.Notification, applied = FrictionLevel.Notification, paused = false)
 
 fun shown(
     nudgeId: String,
     timestamp: Long,
     packageName: String = FEED,
 ): EventEntity =
-    decisionEvent(NudgeDecision.Show(longSession), contextAt(timestamp, packageName), NudgeConfig(), nudgeId)
+    decisionEvent(
+        NudgeDecision.Show(longSession),
+        notification,
+        contextAt(timestamp, packageName),
+        NudgeConfig(),
+        nudgeId,
+    )
 
 fun heldOut(
     nudgeId: String,
@@ -64,6 +74,7 @@ fun heldOut(
 ): EventEntity =
     decisionEvent(
         NudgeDecision.Suppress(longSession, SuppressionReason.Holdout),
+        notification,
         contextAt(timestamp, packageName),
         NudgeConfig(),
         nudgeId,
