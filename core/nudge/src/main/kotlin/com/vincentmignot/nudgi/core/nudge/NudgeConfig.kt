@@ -33,4 +33,6 @@ data class NudgeConfig(
     /** Probability that a higher friction level asked for by the rules is actually applied. */
     val escalationProbability: Double = 0.8,
     val frictionPauseMs: Long = 60 * MINUTE_MS,
+    /** Nudgi's expressions an intervention is drawn among, uniformly (decision 0021). */
+    val coachExpressions: List<CoachExpression> = CoachExpression.entries,
 )

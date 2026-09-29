@@ -8,6 +8,25 @@ import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SHOWN
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SUPPRESSED
 import com.vincentmignot.nudgi.core.database.EventEntity
 
+/** What a decision records of [this] context, and all the shadow bandit sees of it. */
+fun NudgeContext.snapshot(): NudgeContextSnapshot =
+    NudgeContextSnapshot(
+        sessionMs = sessionMs,
+        dailyMs = dailyUsageMs,
+        lateNightMs = lateNightUsageMs,
+        localHour = localHour,
+        weekday = weekday,
+        nudgesToday = nudgesShownToday,
+        msSinceLastNudge = lastShownAt?.let { now - it },
+        snoozesToday =
+            pastNudges.count {
+                it.packageName == packageName &&
+                    it.response == NudgeResponse.Snooze &&
+                    (it.respondedAt ?: 0L) in dayStartedAt..now
+            },
+        frictionLevelReached = frictionState(this).level.value,
+    )
+
 /** The `nudge_shown` or `nudge_suppressed` row for [decision], which must not be [NudgeDecision.None]. */
 fun decisionEvent(
     decision: NudgeDecision,
@@ -15,6 +34,8 @@ fun decisionEvent(
     context: NudgeContext,
     config: NudgeConfig,
     nudgeId: String,
+    shadow: ShadowMetadata? = null,
+    expression: CoachExpression? = null,
 ): EventEntity {
     val (eventType, candidate, reason) =
         when (decision) {
@@ -32,21 +53,15 @@ fun decisionEvent(
             followUpOf = candidate.followUpOf,
             reason = reason?.id,
             holdoutProbability = config.holdoutProbability,
-            context =
-                NudgeContextSnapshot(
-                    sessionMs = context.sessionMs,
-                    dailyMs = context.dailyUsageMs,
-                    lateNightMs = context.lateNightUsageMs,
-                    localHour = context.localHour,
-                    weekday = context.weekday,
-                    nudgesToday = context.nudgesShownToday,
-                    msSinceLastNudge = context.lastShownAt?.let { context.now - it },
-                ),
+            context = context.snapshot(),
+            shadow = shadow,
             frictionLevel = friction.applied.value,
             requestedFrictionLevel = friction.requested.value,
             escalationProbability = config.escalationProbability,
             frictionPaused = friction.paused,
             frictionFallback = friction.fallback?.id,
+            expression = expression?.id,
+            expressionProbability = expression?.let { expressionProbability(config) },
         )
     return EventEntity(
         timestamp = context.now,

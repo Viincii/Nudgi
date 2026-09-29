@@ -1,6 +1,7 @@
 package com.vincentmignot.nudgi.core.nudge
 
 import com.vincentmignot.nudgi.core.database.EventDao
+import kotlinx.coroutines.CancellationException
 import java.time.ZoneId
 import java.util.UUID
 import javax.inject.Inject
@@ -38,6 +39,7 @@ class NudgeEvaluator
         private val watchedApps: WatchedApps,
         private val notifier: NudgeNotifier,
         private val frictionPresenter: FrictionPresenter,
+        private val shadowPolicy: ShadowPolicy,
         private val holdoutDraw: HoldoutDraw,
         private val config: NudgeConfig,
     ) {
@@ -59,20 +61,49 @@ class NudgeEvaluator
             val candidate = decision.candidate ?: return nextEvaluationAt(context, config, zone)
             var friction = decideFriction(context, candidate, config, holdoutDraw.next())
 
+            // Drawn once, only for an intervention that shows Nudgi, and kept if an overlay falls
+            // back to a notification.
+            var drawn: CoachExpression? = null
+            val expression = { drawn ?: drawExpression(config, holdoutDraw.next()).also { drawn = it } }
+
             val nudgeId = UUID.randomUUID().toString()
             if (decision is NudgeDecision.Show && friction.applied != FrictionLevel.Notification) {
-                val presented = frictionPresenter.present(nudgeId, candidate, context, friction.applied)
+                val face = if (friction.applied == FrictionLevel.ForcedClose) null else expression()
+                val presented = frictionPresenter.present(nudgeId, candidate, context, friction.applied, face)
                 if (!presented) friction = friction.fallingBack(FrictionFallback.ServiceUnavailable)
             }
             val notifies = decision is NudgeDecision.Show && friction.applied == FrictionLevel.Notification
             if (notifies && !notifier.canNotify()) {
                 decision = NudgeDecision.Suppress(candidate, SuppressionReason.NotificationsDisabled)
             }
+            val shown =
+                if (decision is NudgeDecision.Show &&
+                    friction.applied != FrictionLevel.ForcedClose
+                ) {
+                    expression()
+                } else {
+                    null
+                }
 
-            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId))
-            if (decision is NudgeDecision.Show && notifies) notifier.show(nudgeId, candidate, context)
+            val shadow = shadowChoice(context, candidate, zone)
+            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId, shadow, shown))
+            if (shown != null && notifies) notifier.show(nudgeId, candidate, context, shown)
             return nextEvaluationAt(context.including(decision, friction, nudgeId), config, zone)
         }
+
+        /** The shadow bandit never acts, so its failure is recorded as a missing shadow, never allowed to stop a nudge. */
+        private suspend fun shadowChoice(
+            context: NudgeContext,
+            candidate: NudgeCandidate,
+            zone: ZoneId,
+        ): ShadowMetadata? =
+            try {
+                shadowPolicy.choose(context, candidate, zone)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
     }
 
 /** [this] context as it will look once [decision] is recorded, for scheduling what comes next. */

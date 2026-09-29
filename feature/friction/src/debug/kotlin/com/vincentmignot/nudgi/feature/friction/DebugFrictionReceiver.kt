@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.vincentmignot.nudgi.core.nudge.CoachExpression
 import com.vincentmignot.nudgi.core.nudge.FrictionLevel
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -15,8 +16,8 @@ private const val TAG = "DebugFriction"
  * snoozes, and UI automation cannot drive the screen without unbinding the accessibility service.
  * Nothing is recorded, so the usage data stays the user's own:
  *
- *     adb shell am broadcast -a com.vincentmignot.nudgi.DEBUG_FRICTION \
- *         --ei level 1 --es package com.instagram.android
+ *     adb shell am broadcast -n com.vincentmignot.nudgi/com.vincentmignot.nudgi.feature.friction.DebugFrictionReceiver \
+ *         --ei level 1 --es package com.instagram.android [--es expression happy]
  */
 @AndroidEntryPoint
 class DebugFrictionReceiver : BroadcastReceiver() {
@@ -33,6 +34,7 @@ class DebugFrictionReceiver : BroadcastReceiver() {
             Log.w(TAG, "Expected --ei level 1..3 and --es package <name>")
             return
         }
-        Log.i(TAG, "Preview of $level over $packageName: ${presenter.preview(packageName, level)}")
+        val mood = (CoachExpression.fromId(intent.getStringExtra("expression")) ?: CoachExpression.Worried).mood
+        Log.i(TAG, "Preview of $level over $packageName: ${presenter.preview(packageName, level, mood)}")
     }
 }

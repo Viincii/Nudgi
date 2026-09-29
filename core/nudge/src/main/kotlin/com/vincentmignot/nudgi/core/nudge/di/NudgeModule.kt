@@ -6,10 +6,12 @@ import com.vincentmignot.nudgi.core.nudge.CategoryWatchedApps
 import com.vincentmignot.nudgi.core.nudge.EventFrictionPause
 import com.vincentmignot.nudgi.core.nudge.FrictionPause
 import com.vincentmignot.nudgi.core.nudge.HoldoutDraw
+import com.vincentmignot.nudgi.core.nudge.LinearThompsonShadow
 import com.vincentmignot.nudgi.core.nudge.NudgeConfig
 import com.vincentmignot.nudgi.core.nudge.NudgeNotifier
 import com.vincentmignot.nudgi.core.nudge.PackageManagerAppLabels
 import com.vincentmignot.nudgi.core.nudge.RandomHoldoutDraw
+import com.vincentmignot.nudgi.core.nudge.ShadowPolicy
 import com.vincentmignot.nudgi.core.nudge.WatchedApps
 import dagger.Binds
 import dagger.Module
@@ -31,6 +33,9 @@ abstract class NudgeModule {
 
     @Binds
     abstract fun bindFrictionPause(impl: EventFrictionPause): FrictionPause
+
+    @Binds
+    abstract fun bindShadowPolicy(impl: LinearThompsonShadow): ShadowPolicy
 
     @Binds
     abstract fun bindHoldoutDraw(impl: RandomHoldoutDraw): HoldoutDraw

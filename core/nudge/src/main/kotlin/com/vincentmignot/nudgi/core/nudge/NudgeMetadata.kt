@@ -11,9 +11,10 @@ import kotlinx.serialization.json.Json
  * The policy that took every decision recorded from this build: the rules of [NudgeConfig]. Bump it
  * whenever the way decisions are taken changes, so the data of each policy can be told apart. Rows
  * recorded before the field existed have none; they were taken by `rules_v1`, the rules without
- * friction. `rules_v2` added friction, `rules_v3` a 50% holdout and no daily cap.
+ * friction. `rules_v2` added friction, `rules_v3` a 50% holdout and no daily cap, `rules_v4` a
+ * random coach expression.
  */
-const val RULES_POLICY_ID = "rules_v3"
+const val RULES_POLICY_ID = "rules_v4"
 
 /** Metadata of `nudge_shown` and `nudge_suppressed`. */
 @Serializable
@@ -30,6 +31,8 @@ data class NudgeDecisionMetadata(
     /** Logged on every decision so the propensity of each action can be recovered offline. */
     @SerialName("holdout_probability") val holdoutProbability: Double,
     val context: NudgeContextSnapshot,
+    /** What the shadow bandit would have done; null before it existed, or when it failed. */
+    val shadow: ShadowMetadata? = null,
     // The friction fields are null on rows recorded before friction existed, which were all
     // notifications. See FrictionDecision.
     @SerialName("friction_level") val frictionLevel: Int? = null,
@@ -38,6 +41,9 @@ data class NudgeDecisionMetadata(
     @SerialName("escalation_probability") val escalationProbability: Double? = null,
     @SerialName("friction_paused") val frictionPaused: Boolean? = null,
     @SerialName("friction_fallback") val frictionFallback: String? = null,
+    /** Nudgi's expression in the intervention; null when nothing was shown, or on a forced close. */
+    val expression: String? = null,
+    @SerialName("expression_probability") val expressionProbability: Double? = null,
 )
 
 @Serializable
@@ -49,6 +55,18 @@ data class NudgeContextSnapshot(
     val weekday: Int,
     @SerialName("nudges_today") val nudgesToday: Int,
     @SerialName("ms_since_last_nudge") val msSinceLastNudge: Long? = null,
+    // Null on rows recorded before the shadow bandit, which derives them from the events instead.
+    @SerialName("snoozes_today") val snoozesToday: Int? = null,
+    @SerialName("friction_level_reached") val frictionLevelReached: Int? = null,
+)
+
+/** The shadow bandit's choice for a decision (decision 0020); it never acts on it. */
+@Serializable
+data class ShadowMetadata(
+    @SerialName("policy_id") val policyId: String,
+    val action: String,
+    val propensity: Double,
+    @SerialName("trained_on") val trainedOn: Int,
 )
 
 /** Metadata of `nudge_response`. */

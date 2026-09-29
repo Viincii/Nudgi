@@ -53,7 +53,7 @@ class NudgeEventsTest {
         val json = Json.parseToJsonElement(event.metadata).jsonObject
 
         assertEquals("nudge_suppressed", event.eventType)
-        assertEquals("rules_v3", json.getValue("policy_id").jsonPrimitive.content)
+        assertEquals("rules_v4", json.getValue("policy_id").jsonPrimitive.content)
         assertEquals("daily_budget", json.getValue("rule_id").jsonPrimitive.content)
         assertEquals("holdout", json.getValue("reason").jsonPrimitive.content)
         assertEquals("0.5", json.getValue("holdout_probability").jsonPrimitive.content)
