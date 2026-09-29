@@ -24,7 +24,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vincentmignot.nudgi.core.designsystem.NudgiTheme
 import com.vincentmignot.nudgi.core.export.EXPORT_MIME_TYPE
 import com.vincentmignot.nudgi.core.export.exportFileName
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun SettingsRoute(
@@ -40,6 +44,7 @@ fun SettingsRoute(
     SettingsScreen(
         uiState = uiState,
         onExportClick = { createDocument.launch(exportFileName(LocalDateTime.now())) },
+        onPauseFrictionClick = viewModel::onPauseFrictionClick,
         modifier = modifier,
     )
 }
@@ -48,6 +53,7 @@ fun SettingsRoute(
 internal fun SettingsScreen(
     uiState: SettingsUiState,
     onExportClick: () -> Unit,
+    onPauseFrictionClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { padding ->
@@ -61,6 +67,7 @@ internal fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(text = stringResource(R.string.settings_title), style = MaterialTheme.typography.headlineMedium)
+            FrictionSection(pausedUntil = uiState.frictionPausedUntil, onPauseClick = onPauseFrictionClick)
             Text(text = stringResource(R.string.settings_data_title), style = MaterialTheme.typography.titleMedium)
             Text(
                 text = stringResource(R.string.settings_data_explanation),
@@ -74,6 +81,34 @@ internal fun SettingsScreen(
                 Text(text = status, style = MaterialTheme.typography.bodyMedium)
             }
         }
+    }
+}
+
+@Composable
+private fun FrictionSection(
+    pausedUntil: Long?,
+    onPauseClick: () -> Unit,
+) {
+    Text(text = stringResource(R.string.settings_friction_title), style = MaterialTheme.typography.titleMedium)
+    Text(
+        text = stringResource(R.string.settings_friction_explanation),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Button(onClick = onPauseClick, enabled = pausedUntil == null) {
+        Text(stringResource(R.string.settings_friction_pause_button))
+    }
+    if (pausedUntil != null) {
+        val time =
+            Instant
+                .ofEpochMilli(pausedUntil)
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+                .format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
+        Text(
+            text = stringResource(R.string.settings_friction_paused_until, time),
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 
@@ -101,6 +136,10 @@ private fun exportStatus(state: ExportState): String? =
 @Composable
 private fun SettingsScreenPreview() {
     NudgiTheme {
-        SettingsScreen(uiState = SettingsUiState(export = ExportState.Done(eventCount = 12_345)), onExportClick = {})
+        SettingsScreen(
+            uiState = SettingsUiState(export = ExportState.Done(eventCount = 12_345)),
+            onExportClick = {},
+            onPauseFrictionClick = {},
+        )
     }
 }

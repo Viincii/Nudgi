@@ -12,6 +12,7 @@ android {
 
 dependencies {
     implementation(project(":core:export"))
+    implementation(project(":core:nudge"))
     implementation(libs.androidx.activity.compose)
 
     testImplementation(libs.kotlinx.coroutines.test)
