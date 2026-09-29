@@ -11,9 +11,9 @@ import kotlinx.serialization.json.Json
  * The policy that took every decision recorded from this build: the rules of [NudgeConfig]. Bump it
  * whenever the way decisions are taken changes, so the data of each policy can be told apart. Rows
  * recorded before the field existed have none; they were taken by `rules_v1`, the rules without
- * friction.
+ * friction. `rules_v2` added friction, `rules_v3` a 50% holdout and no daily cap.
  */
-const val RULES_POLICY_ID = "rules_v2"
+const val RULES_POLICY_ID = "rules_v3"
 
 /** Metadata of `nudge_shown` and `nudge_suppressed`. */
 @Serializable

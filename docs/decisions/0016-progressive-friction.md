@@ -90,7 +90,7 @@ never tell whether an overlay does better than a notification in the same situat
 higher level, it is applied with a probability of 0.8. Otherwise the app stays at its current level for
 that decision, and the probability is logged on every decision, as `holdout_probability` already is.
 
-The existing 10% holdout on whether to nudge at all stays unchanged, and it still never applies to a snooze
+The existing holdout on whether to nudge at all stays unchanged (10%, then 50% since [0018](0018-tuning-for-data-collection.md)), and it still never applies to a snooze
 follow-up.
 
 ### Where it lives

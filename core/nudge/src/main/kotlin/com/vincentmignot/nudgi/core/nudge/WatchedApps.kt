@@ -28,10 +28,19 @@ private val KNOWN_FEED_APPS =
         "com.snapchat.android",
     )
 
+/**
+ * Apps declared in a watched category that are not feeds. Messaging apps call themselves social,
+ * but a conversation is not doom-scrolling, and nudging it would only teach the model noise.
+ */
+private val NEVER_WATCHED =
+    setOf(
+        "com.google.android.apps.messaging",
+    )
+
 private val WATCHED_CATEGORIES =
     setOf(ApplicationInfo.CATEGORY_SOCIAL, ApplicationInfo.CATEGORY_VIDEO, ApplicationInfo.CATEGORY_NEWS)
 
-/** Watches social, video and news apps, plus [KNOWN_FEED_APPS]; never Nudgi itself. */
+/** Watches social, video and news apps, plus [KNOWN_FEED_APPS]; never Nudgi itself nor [NEVER_WATCHED]. */
 @Singleton
 class CategoryWatchedApps
     @Inject
@@ -44,7 +53,7 @@ class CategoryWatchedApps
         override fun isWatched(packageName: String): Boolean = cache.getOrPut(packageName) { lookUp(packageName) }
 
         private fun lookUp(packageName: String): Boolean {
-            if (packageName == context.packageName) return false
+            if (packageName == context.packageName || packageName in NEVER_WATCHED) return false
             if (packageName in KNOWN_FEED_APPS) return true
             val info =
                 try {

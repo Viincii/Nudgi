@@ -21,9 +21,6 @@ fun decideNudge(
     holdoutDraw: Double,
 ): NudgeDecision {
     val candidate = nudgeCandidate(context, config) ?: return NudgeDecision.None
-    if (context.nudgesShownToday >= config.dailyCap) {
-        return NudgeDecision.Suppress(candidate, SuppressionReason.DailyCap)
-    }
     // The user explicitly asked to be reminded, so neither the cooldown nor the holdout applies.
     if (candidate.rule == NudgeRule.SnoozeFollowUp) return NudgeDecision.Show(candidate)
 

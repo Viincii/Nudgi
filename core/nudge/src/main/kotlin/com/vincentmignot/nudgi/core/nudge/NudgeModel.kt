@@ -32,6 +32,8 @@ enum class SuppressionReason(
     val id: String,
 ) {
     Cooldown("cooldown"),
+
+    /** No longer produced since `rules_v3`, which has no daily cap; kept to read older rows. */
     DailyCap("daily_cap"),
 
     /** Randomly withheld as a control group; the only reason that is not the rules' doing. */
