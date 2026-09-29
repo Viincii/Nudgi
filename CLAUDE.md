@@ -64,6 +64,13 @@ Exported Room schemas go in `core/database/schemas/` and are committed.
 ./gradlew assembleRelease -PwarningsAsErrors=true
 ```
 
+Friction cannot be checked through UI automation, which unbinds the accessibility service. A debug build shows any
+level on demand, without recording anything (`DebugFrictionReceiver`):
+
+```bash
+adb shell am broadcast -n com.vincentmignot.nudgi/com.vincentmignot.nudgi.feature.friction.DebugFrictionReceiver --ei level 1 --es package com.instagram.android
+```
+
 CI (`.github/workflows/ci.yml`) runs spotlessCheck, lintDebug, testDebugUnitTest and assembleDebug with
 `-PwarningsAsErrors=true`. Run the same locally before pushing.
 
@@ -99,7 +106,5 @@ code into a bitmap (see `docs/decisions/0013`).
 
 ## Next up
 
-- Sideload the friction build onto the Nothing Phone (1) and check the overlay and the forced close by hand: UI
-  tools that drive the screen unbind the accessibility service (see `docs/decisions/0011`).
 - A shadow bandit: computes its own decision next to the rules' and records it, without acting.
 - Import an export back into the database (see `docs/decisions/0014`).

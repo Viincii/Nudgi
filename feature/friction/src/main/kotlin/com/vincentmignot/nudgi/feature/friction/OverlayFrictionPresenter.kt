@@ -89,8 +89,47 @@ class OverlayFrictionPresenter
             level: FrictionLevel,
         ): Boolean {
             val packageName = nudgeContext.packageName
+            return showOverlay(
+                packageName = packageName,
+                message = messages.message(candidate, nudgeContext),
+                level = level,
+                onStop = { respond(nudgeId, packageName, NudgeResponse.Stop) },
+                onSnooze = { respond(nudgeId, packageName, NudgeResponse.Snooze) },
+            )
+        }
+
+        /**
+         * Applies [level] over [packageName] without any nudge behind it: nothing is recorded, and
+         * the buttons only remove the overlay. For checking friction by hand on a debug build.
+         */
+        internal fun preview(
+            packageName: String,
+            level: FrictionLevel,
+        ): Boolean =
+            when (level) {
+                FrictionLevel.Notification -> {
+                    false
+                }
+
+                FrictionLevel.ForcedClose -> {
+                    closeApp(packageName)
+                }
+
+                FrictionLevel.Overlay, FrictionLevel.CountdownOverlay -> {
+                    current?.remove()
+                    val dismiss = { current?.remove() ?: Unit }
+                    showOverlay(packageName, "Preview of the friction overlay.", level, dismiss, dismiss)
+                }
+            }
+
+        private fun showOverlay(
+            packageName: String,
+            message: String,
+            level: FrictionLevel,
+            onStop: () -> Unit,
+            onSnooze: () -> Unit,
+        ): Boolean {
             val title = messages.title()
-            val message = messages.message(candidate, nudgeContext)
             val countdownMs = if (level == FrictionLevel.CountdownOverlay) config.frictionCountdownMs else 0L
             val lifecycleOwner = OverlayLifecycleOwner()
             var overlay: Overlay? = null
@@ -106,8 +145,8 @@ class OverlayFrictionPresenter
                                         title = title,
                                         message = message,
                                         countdownMs = countdownMs,
-                                        onStop = { respond(nudgeId, packageName, NudgeResponse.Stop) },
-                                        onSnooze = { respond(nudgeId, packageName, NudgeResponse.Snooze) },
+                                        onStop = onStop,
+                                        onSnooze = onSnooze,
                                     )
                                 }
                             }
