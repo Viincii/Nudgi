@@ -40,6 +40,7 @@ class NudgeEventsTest {
         val json = Json.parseToJsonElement(event.metadata).jsonObject
 
         assertEquals("nudge_suppressed", event.eventType)
+        assertEquals("rules_v1", json.getValue("policy_id").jsonPrimitive.content)
         assertEquals("daily_budget", json.getValue("rule_id").jsonPrimitive.content)
         assertEquals("holdout", json.getValue("reason").jsonPrimitive.content)
         assertEquals("0.1", json.getValue("holdout_probability").jsonPrimitive.content)
@@ -47,6 +48,16 @@ class NudgeEventsTest {
         assertEquals("1500000", snapshot.getValue("session_ms").jsonPrimitive.content)
         assertEquals("4200000", snapshot.getValue("daily_ms").jsonPrimitive.content)
         assertFalse("absent values are left out", "ms_since_last_nudge" in snapshot)
+    }
+
+    @Test
+    fun `decision metadata recorded before policies were identified still decodes`() {
+        val legacy =
+            """{"nudge_id":"n1","rule_id":"long_session","level":1,"threshold_ms":1200000,""" +
+                """"holdout_probability":0.1,"context":{"session_ms":0,"daily_ms":0,"late_night_ms":0,""" +
+                """"local_hour":12,"weekday":2,"nudges_today":0}}"""
+
+        assertNull(NudgeJson.decodeFromString<NudgeDecisionMetadata>(legacy).policyId)
     }
 
     @Test

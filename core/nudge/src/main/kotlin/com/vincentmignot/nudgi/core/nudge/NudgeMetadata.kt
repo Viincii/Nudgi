@@ -7,10 +7,19 @@ import kotlinx.serialization.json.Json
 // The `events.metadata` JSON of each nudge event type. Field names are snake_case to match the
 // column naming, and they are the contract the on-device model will be trained on: rename with care.
 
+/**
+ * The policy that took every decision recorded from this build: the rules of [NudgeConfig]. Rows
+ * recorded before the field existed have none, and were taken by the same rules. Bump it whenever
+ * the way decisions are taken changes, so the data of each policy can be told apart.
+ */
+const val RULES_POLICY_ID = "rules_v1"
+
 /** Metadata of `nudge_shown` and `nudge_suppressed`. */
 @Serializable
 data class NudgeDecisionMetadata(
     @SerialName("nudge_id") val nudgeId: String,
+    /** Null on rows recorded before policies were identified; see [RULES_POLICY_ID]. */
+    @SerialName("policy_id") val policyId: String? = null,
     @SerialName("rule_id") val ruleId: String,
     val level: Int,
     @SerialName("threshold_ms") val thresholdMs: Long,

@@ -24,6 +24,7 @@ fun decisionEvent(
     val metadata =
         NudgeDecisionMetadata(
             nudgeId = nudgeId,
+            policyId = RULES_POLICY_ID,
             ruleId = candidate.rule.id,
             level = candidate.level,
             thresholdMs = candidate.thresholdMs,
