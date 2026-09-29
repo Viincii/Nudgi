@@ -1,8 +1,5 @@
 # 19. The reward the bandit learns from
 
-> **Status: draft.** The shape of the reward is proposed below; the numbers and a few choices are listed under
-> "Open questions" and must be settled before the shadow bandit is built.
-
 ## Context
 
 The rule-based V1 records every nudge decision with its context, its action and a propensity (see
@@ -26,28 +23,35 @@ export (five days, 40 shown or held-out nudges) shows its limits:
 
 ## Decision
 
-### The benefit: watched-app time avoided in the next 30 minutes
+### The benefit: watched-app time avoided afterwards
 
-For a decision taken at `t`, the benefit is the share of the next 30 minutes **not** spent on watched apps:
+For a decision taken at `t`, the benefit is the share of the following window **not** spent on watched apps:
 
 ```
-benefit = 1 − (watched-app time in [t, t + 30 min]) / 30 min        ∈ [0, 1]
+benefit = 1 − (watched-app time in [t, t + window]) / window        ∈ [0, 1]
 ```
 
-- It counts **all** watched apps, not only the one nudged, so moving to another feed is not a success.
+The window is **30 minutes during the day and 60 minutes at night** (below). At night the question is whether the
+user went to sleep, which half an hour off the feeds does not answer.
+
+- It counts **all** watched apps, not only the one nudged, so moving to another feed is not a success. Other
+  phone use, messages included, does not count against it: the goal is fewer feeds, not no phone. Counting all
+  screen time can be revisited once watched apps alone are understood.
 - It is continuous: leaving for good scores close to 1, coming back after five minutes scores less, carrying on
   scores 0.
 - It needs nothing new. Foreground and background events already give the watched-app time of any window.
 - At night it measures what matters, being off the feeds, whether the user locked the phone or not.
 
-On the first export it averages 0.50 for shown nudges, against 0.34 for the three held-out ones; with three
+On the first export, with a 30-minute window throughout, it averages 0.50 for shown nudges, against 0.34 for the three held-out ones; with three
 controls that says nothing yet, but the measure behaves: spread over the whole `[0, 1]` range, and 0 exactly when
 the user carried on.
 
 ### Night counts double
 
-The benefit is multiplied by a weight that depends on the local time of the decision only: **2 in the late-night
-window** (23:00 to 06:00, the one the `late_night` rule already uses), 1 otherwise.
+The benefit is multiplied by a weight that depends on the local time of the decision only: **2 from 00:00 to
+06:00**, 1 otherwise. Night starts at midnight rather than at the 23:00 of the `late_night` rule: the user goes to
+bed late, and the evening before midnight is not what they want to protect. The rule keeps its own window; the
+reward only says how much an outcome is worth.
 
 In a contextual bandit, a weight that depends on the context alone does not change which action is best in that
 context. It matters through the cost below: at night the same effect of a nudge is worth twice as much, so it pays
@@ -70,7 +74,10 @@ reward = weight(t) × benefit − cost(action)
 | Forced close | 0.5 |
 
 A cost reads as the minimum effect that justifies the action. A notification at 0.1 is worth showing during the
-day if it saves at least 3 minutes of the next 30 on feeds, and at night if it saves 1.5. The costs stand for
+day if it saves at least 3 minutes of the next 30 on feeds, and at night if it saves 3 of the next 60, since the
+benefit is doubled there. A forced close at 0.5 needs 15 minutes saved during the day and 15 at night. The costs
+rise with the level because a stronger intervention is more annoying and wears out faster; the randomized
+escalation of 0016 still shows whether the higher levels earn their cost. The costs stand for
 annoyance and habituation, which the benefit cannot see; they are values to choose, not to learn.
 
 ### Derived, versioned, never stored
@@ -85,21 +92,15 @@ They remain features and diagnostics.
 
 ## Consequences
 
-- The reward of a decision is known 30 minutes after it (plus the merge gap), against 10 for the current outcome.
+- The reward of a decision is known 30 minutes after it, 60 at night (plus the merge gap), against 10 for the
+  current outcome.
   Training and evaluation work on delayed feedback either way.
 - Consecutive decisions overlap: a snooze follow-up 5 minutes after a nudge shares 25 of its 30 minutes. Their
   rewards are correlated, which the bandit's variance estimates will understate. Acceptable for a single user; to
   keep in mind when reading confidence intervals.
 - `nudge_outcome` keeps being recorded as it is. It is cheap, it is what the home screen shows, and it keeps the
   data of V1 readable on its own.
-- A 30-minute benefit still cannot see habituation over weeks. Daily watched time stays the metric to watch across
+- The night weight, the windows and the costs are the user's values, and are expected to move. They live in one
+  place, versioned with the reward function, so each change is a new `reward_vN` recomputed over all the history.
+- A benefit over 30 or 60 minutes still cannot see habituation over weeks. Daily watched time stays the metric to watch across
   policies, outside of the reward.
-
-## Open questions
-
-1. **The window**: 30 minutes, or longer at night (say 60), when the question is whether the user went to sleep?
-2. **The night weight**: 2 from 23:00 to 06:00, or a ramp starting earlier in the evening (1.5 from 21:00)?
-3. **The costs**: the table above, or a single cost per nudge whatever its level, leaving the ladder's randomized
-   escalation to show whether higher levels do better?
-4. **Watched time, or screen time?** Counting all screen time would make any phone use a failure, messages
-   included. Proposed: watched apps only.
