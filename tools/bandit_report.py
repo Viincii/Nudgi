@@ -8,6 +8,9 @@ learns from are those of banditObservations in core:nudge, and the propensities 
 (decisions 0010, 0016, 0018). The export does not say which apps were watched, so the script watches the apps the
 rules nudged on, plus the known feed apps.
 
+Decisions listed in tools/excluded_decisions.json, by nudge id with the reason, are left out: their outcome was
+caused by testing the app rather than by the user.
+
 The shadow bandit is scored by inverse propensity weighting (decision 0020): over the decisions where the rules
 happened to take the action the shadow chose, each reward counts 1 / (probability that the rules took it). That is
 an unbiased estimate of what the shadow would have scored had it been in charge, without ever letting it act.
@@ -102,7 +105,12 @@ def rules_propensity(md, action):
     return show * (escalation if applied == requested else 1.0 - escalation)
 
 
-def decisions(events, now, watched):
+def excluded_decisions():
+    path = Path(__file__).with_name("excluded_decisions.json")
+    return set(json.loads(path.read_text())) if path.exists() else set()
+
+
+def decisions(events, now, watched, excluded):
     """The decisions the bandit learns from, as in banditObservations: closed windows, deduplicated cooldowns."""
     intervals = watched_intervals(events, watched, now)
     seen_cooldowns = set()
@@ -111,6 +119,8 @@ def decisions(events, now, watched):
         if e["event_type"] not in ("nudge_shown", "nudge_suppressed"):
             continue
         md, t = e["metadata"], e["timestamp"]
+        if md["nudge_id"] in excluded:
+            continue
         hour = md["context"]["local_hour"]
         if now < t + window_ms(hour) + MERGE_GAP_MS:
             continue
@@ -149,11 +159,12 @@ def main(path):
     now = manifest["exported_at"]
     nudged = {e["package_name"] for e in events if e["event_type"] in ("nudge_shown", "nudge_suppressed")}
     watched = (nudged | KNOWN_FEED_APPS) - NEVER_WATCHED
-    rows = decisions(events, now, watched)
+    excluded = excluded_decisions()
+    rows = decisions(events, now, watched, excluded)
 
     first, last = (datetime.fromtimestamp(ts / 1000, zone) for ts in (events[0]["timestamp"], events[-1]["timestamp"]))
     print(f"Export: {len(events)} events, {first:%Y-%m-%d %H:%M} to {last:%Y-%m-%d %H:%M}")
-    print(f"Decisions with a closed reward window: {len(rows)}")
+    print(f"Decisions with a closed reward window: {len(rows)} ({len(excluded)} excluded by id, if present)")
     print("By policy: " + ", ".join(f"{p} {n}" for p, n in sorted(Counter(r['policy'] for r in rows).items())))
 
     print("\nWhat each action yielded (reward_v1)")
