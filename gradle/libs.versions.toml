@@ -89,3 +89,4 @@ nudgi-android-compose = { id = "nudgi.android.compose" }
 nudgi-android-feature = { id = "nudgi.android.feature" }
 nudgi-android-hilt = { id = "nudgi.android.hilt" }
 nudgi-android-room = { id = "nudgi.android.room" }
+nudgi-jvm-library = { id = "nudgi.jvm.library" }

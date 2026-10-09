@@ -39,5 +39,9 @@ gradlePlugin {
             id = "nudgi.android.room"
             implementationClass = "nudgi.AndroidRoomConventionPlugin"
         }
+        register("jvmLibrary") {
+            id = "nudgi.jvm.library"
+            implementationClass = "nudgi.JvmLibraryConventionPlugin"
+        }
     }
 }
