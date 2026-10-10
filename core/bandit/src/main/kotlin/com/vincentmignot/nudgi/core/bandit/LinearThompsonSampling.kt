@@ -40,41 +40,28 @@ class LinearThompsonSampling(
     /** Draws used to estimate the propensity of the chosen action. */
     private val propensityDraws: Int = 200,
 ) {
-    private class Posterior(
-        val mean: DoubleArray,
-        /** Cholesky factor of the posterior precision. */
-        val precisionFactor: Array<DoubleArray>,
-    ) {
-        fun draw(random: Random): DoubleArray {
-            // With precision A = L Lᵀ, L⁻ᵀz has covariance A⁻¹ for a standard normal z.
-            val z = DoubleArray(mean.size) { random.nextGaussian() }
-            val offset = backSubstituteTransposed(precisionFactor, z)
-            return DoubleArray(mean.size) { mean[it] + offset[it] }
-        }
-    }
-
     fun choose(
         context: BanditContext,
         allowed: Set<BanditAction>,
         observations: List<Observation>,
         random: Random,
-    ): BanditChoice {
-        require(allowed.isNotEmpty()) { "No action to choose from" }
-        val x = features(context)
-        val posteriors = allowed.associateWith { action -> fit(observations.filter { it.action == action }) }
+    ): BanditChoice = fit(observations).choose(context, allowed, random)
 
-        fun drawBest(): BanditAction =
-            allowed.maxBy { action ->
-                RewardV1.weight(context.localHour) * dot(posteriors.getValue(action).draw(random), x) -
-                    RewardV1.cost(action)
-            }
+    /**
+     * The posterior of every action given [observations]. The app refits at every decision; a
+     * simulation that chooses many times on the same history fits once and chooses from the result.
+     */
+    fun fit(observations: List<Observation>): FittedBandit =
+        FittedBandit(
+            posteriors =
+                BanditAction.entries.associateWith { action ->
+                    posterior(observations.filter { it.action == action })
+                },
+            trainedOn = observations.size,
+            propensityDraws = propensityDraws,
+        )
 
-        val chosen = drawBest()
-        val wins = 1 + (1 until propensityDraws).count { drawBest() == chosen }
-        return BanditChoice(chosen, wins.toDouble() / propensityDraws, observations.size)
-    }
-
-    private fun fit(observations: List<Observation>): Posterior {
+    private fun posterior(observations: List<Observation>): Posterior {
         val n = FEATURE_COUNT
         val noisePrecision = 1.0 / (noiseSd * noiseSd)
         // Precision: λI + XᵀX / σ². Right-hand side: λ·w₀ + Xᵀy / σ², with w₀ putting the prior
@@ -92,6 +79,45 @@ class LinearThompsonSampling(
         val factor = cholesky(precision)
         val mean = backSubstituteTransposed(factor, forwardSubstitute(factor, rhs))
         return Posterior(mean, factor)
+    }
+}
+
+/** The bandit fitted on a history: every [choose] draws afresh from the same posteriors. */
+class FittedBandit internal constructor(
+    private val posteriors: Map<BanditAction, Posterior>,
+    val trainedOn: Int,
+    private val propensityDraws: Int,
+) {
+    fun choose(
+        context: BanditContext,
+        allowed: Set<BanditAction>,
+        random: Random,
+    ): BanditChoice {
+        require(allowed.isNotEmpty()) { "No action to choose from" }
+        val x = features(context)
+
+        fun drawBest(): BanditAction =
+            allowed.maxBy { action ->
+                RewardV1.weight(context.localHour) * dot(posteriors.getValue(action).draw(random), x) -
+                    RewardV1.cost(action)
+            }
+
+        val chosen = drawBest()
+        val wins = 1 + (1 until propensityDraws).count { drawBest() == chosen }
+        return BanditChoice(chosen, wins.toDouble() / propensityDraws, trainedOn)
+    }
+}
+
+internal class Posterior(
+    val mean: DoubleArray,
+    /** Cholesky factor of the posterior precision. */
+    val precisionFactor: Array<DoubleArray>,
+) {
+    fun draw(random: Random): DoubleArray {
+        // With precision A = L Lᵀ, L⁻ᵀz has covariance A⁻¹ for a standard normal z.
+        val z = DoubleArray(mean.size) { random.nextGaussian() }
+        val offset = backSubstituteTransposed(precisionFactor, z)
+        return DoubleArray(mean.size) { mean[it] + offset[it] }
     }
 }
 

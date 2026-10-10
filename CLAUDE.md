@@ -33,13 +33,14 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:database` | Room database (`events`, `daily_stats`) | nothing |
 | `core:accessibility` | `NudgiAccessibilityService` (foreground app changes, friction overlays, going home), permission check | nothing |
 | `core:usagestats` | `UsageStatsManager` polling into `events`, aggregated into `daily_stats` | `core:database` |
-| `core:bandit` | The bandit reward, features and linear Thompson sampling, pure Kotlin | nothing |
+| `core:bandit` | The bandit reward, features and linear Thompson sampling, a plain Kotlin JVM library | nothing |
 | `core:nudge` | Rule-based nudges: rules, notification, nudge events, coach expression, the shadow bandit's choice | `core:bandit`, `core:database`, `core:mascot`, `core:usagestats` |
 | `core:today` | Today's summary and the mood derived from it, shared by the home screen and the widget | `core:database`, `core:mascot`, `core:nudge`, `core:usagestats` |
 | `core:export` | Writes the database to a zip (JSON Lines, CSV, manifest) for a user-initiated export | `core:database` |
 | `feature:friction` | The friction overlay drawn in the accessibility service's window, and the forced close | `core:accessibility`, `core:nudge` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
-| `build-logic` | Convention plugins (`nudgi.android.*`) | n/a |
+| `tools:simulator` | A simulated user the real bandit runs against, on the laptop; never ships (see `docs/decisions/0022`) | `core:bandit` |
+| `build-logic` | Convention plugins (`nudgi.android.*`, `nudgi.jvm.library`) | n/a |
 
 `core` modules never depend on `feature` modules. New modules use the convention plugins from `build-logic` and are
 registered in `settings.gradle.kts`. Prefer `alias(libs.plugins.nudgi.android.feature)` for a feature module.
@@ -69,6 +70,13 @@ The bandit is judged on the laptop, from an export (see `docs/decisions/0020`). 
 
 ```bash
 python3 tools/bandit_report.py path/to/nudgi-export.zip
+```
+
+The simulator runs the bandit against a simulated user (`linear`, `calibrated-low`, `calibrated-high`,
+`nothing-works`), with decisions resampled from an export when one is given:
+
+```bash
+./gradlew :tools:simulator:run --args="calibrated-low --export path/to/nudgi-export.zip"
 ```
 
 Friction cannot be checked through UI automation, which unbinds the accessibility service. A debug build shows any
