@@ -79,7 +79,14 @@ data class RulesPolicy(
     companion object {
         val V4 = RulesPolicy()
 
-        /** The starting point for `rules_v5` agreed on before simulating it. */
-        val V5 = RulesPolicy(holdoutProbability = 0.3, neighbourProbability = 0.2, forcedCloseProbability = 0.05)
+        /**
+         * What Nudgi would do with neither a bandit nor any measurement: always the level the ladder
+         * asks for. The holdout and the random draws only exist to collect data, so this, not the
+         * rules collecting it, is what the bandit has to beat before going live.
+         */
+        val LADDER = RulesPolicy(holdoutProbability = 0.0, escalationProbability = 1.0)
+
+        /** The rates of `rules_v5` chosen with the simulator (decision 0023). */
+        val V5 = RulesPolicy(holdoutProbability = 0.2, neighbourProbability = 0.3, forcedCloseProbability = 0.05)
     }
 }

@@ -1,7 +1,6 @@
 package com.vincentmignot.nudgi.tools.simulator
 
 import com.vincentmignot.nudgi.core.bandit.BanditAction
-import com.vincentmignot.nudgi.core.bandit.LinearThompsonSampling
 import java.io.File
 import java.util.Locale
 import kotlin.math.sqrt
@@ -20,7 +19,10 @@ private val USAGE =
     |                   only chooses among the actions the rules can take
     |  --holdout p, --neighbour p, --forced p
     |                   override the rules' holdout, neighbour-level and forced-close probabilities
+    |  --prior-precision p, --prior-benefit b, --noise-sd s
+    |                   override the bandit's prior and noise (default 4, 0.5, 0.3, as in the app)
     |  --grid           compare exploration rates instead of running one configuration
+    |  --prior-grid     compare prior precisions under the chosen rules instead
     |  --seeds N        random seeds per study (default 30)
     |  --out dir        where the CSV files and the synthetic export go
     |
@@ -31,7 +33,7 @@ private val USAGE =
     |decisions per day measured on it; without one, decisions are invented and the rest assumed.
     """.trimMargin()
 
-/** The share of seeds where the bandit must beat the rules before it goes live (decision 0022). */
+/** The share of seeds where the bandit must beat the ladder before it goes live (decision 0022). */
 private const val GO_LIVE_SHARE = 0.8
 
 private val SHADOW_CHECKPOINTS = listOf(50, 100, 200, 300, 400, 600, 800, 1000, 1500, 2000, 3000)
@@ -43,14 +45,18 @@ private val GRID_HOLDOUTS = listOf(0.2, 0.3, 0.5)
 private val GRID_NEIGHBOURS = listOf(0.1, 0.2, 0.3)
 private val GRID_FORCED_CLOSES = listOf(0.02, 0.05)
 
+private val PRIOR_PRECISIONS = listOf(4.0, 16.0, 64.0, 256.0, 1024.0, 4096.0)
+
 /** Where the grid reads the report's estimate: a few weeks of real decisions. */
 private const val GRID_IPS_DECISIONS = 300
 
 fun main(args: Array<String>) {
     val scenario = args.firstOrNull()?.let(Scenario::fromId) ?: fail("Unknown or missing scenario")
     val rest = args.drop(1)
+    val flags = setOf("--grid", "--prior-grid")
     val grid = "--grid" in rest
-    val options = rest.filter { it != "--grid" }.chunked(2).associate { it.first() to it.getOrNull(1) }
+    val priorGrid = "--prior-grid" in rest
+    val options = rest.filter { it !in flags }.chunked(2).associate { it.first() to it.getOrNull(1) }
     val seeds = options["--seeds"]?.toIntOrNull() ?: 30
     val exportPath = options["--export"]?.let(::File)
     val baseRules =
@@ -65,6 +71,14 @@ fun main(args: Array<String>) {
             neighbourProbability = options["--neighbour"]?.toDouble() ?: baseRules.neighbourProbability,
             forcedCloseProbability = options["--forced"]?.toDouble() ?: baseRules.forcedCloseProbability,
         )
+    val prior =
+        BanditPrior().let { default ->
+            BanditPrior(
+                priorBenefit = options["--prior-benefit"]?.toDouble() ?: default.priorBenefit,
+                priorPrecision = options["--prior-precision"]?.toDouble() ?: default.priorPrecision,
+                noiseSd = options["--noise-sd"]?.toDouble() ?: default.noiseSd,
+            )
+        }
     val out = File(options["--out"] ?: "tools/simulator/build/simulation/${scenario.id}")
 
     val aftermath = Aftermath()
@@ -83,26 +97,32 @@ fun main(args: Array<String>) {
     printCalibration(calibration)
 
     if (grid) {
-        runGrid(user, source, perDay, seeds)
+        runGrid(user, source, perDay, seeds, prior)
         return
     }
 
     val world = World(user, source, rules, restrictBandit = rules.explores)
     println("Rules: ${describe(rules)}" + if (world.restrictBandit) "; bandit limited to the rules' actions" else "")
 
-    val shadow = shadowStudy(world, seeds, SHADOW_CHECKPOINTS)
+    if (priorGrid) {
+        runPriorGrid(world, perDay, seeds, prior)
+        return
+    }
+    println("Bandit: ${describe(prior)}")
+
+    val shadow = shadowStudy(world, seeds, SHADOW_CHECKPOINTS, prior = prior)
     printShadow(shadow, perDay)
-    val online = onlineStudy(world, seeds, ONLINE_DECISIONS)
+    val online = onlineStudy(world, seeds, ONLINE_DECISIONS, prior = prior)
     printOnline(online)
-    val ips = ipsStudy(world, seeds, IPS_CHECKPOINTS)
+    val ips = ipsStudy(world, seeds, IPS_CHECKPOINTS, prior = prior)
     printIps(ips)
 
     out.mkdirs()
-    writeCsv(File(out, "shadow.csv"), "seed,decisions,bandit,rules,best", shadow) {
-        listOf(it.seed, it.decisions, it.bandit, it.rules, it.best)
+    writeCsv(File(out, "shadow.csv"), "seed,decisions,bandit,rules,ladder,best", shadow) {
+        listOf(it.seed, it.decisions, it.bandit, it.rules, it.ladder, it.best)
     }
-    writeCsv(File(out, "online.csv"), "seed,decisions,bandit_regret,rules_regret", online) {
-        listOf(it.seed, it.decisions, it.banditRegret, it.rulesRegret)
+    writeCsv(File(out, "online.csv"), "seed,decisions,bandit_regret,ladder_regret", online) {
+        listOf(it.seed, it.decisions, it.banditRegret, it.ladderRegret)
     }
     writeCsv(
         File(out, "ips.csv"),
@@ -117,7 +137,7 @@ fun main(args: Array<String>) {
         println("\nNo synthetic export: the report cannot read the exploration of these rules yet.")
     } else {
         // One synthetic export, with the app's own propensity draws, for bandit_report.py to read.
-        val logged = runShadow(world, LinearThompsonSampling(), EXPORT_DECISIONS, Random(1))
+        val logged = runShadow(world, prior.bandit(propensityDraws = 200), EXPORT_DECISIONS, Random(1))
         val exportFile = File(out, "synthetic-export.zip")
         writeSyntheticExport(exportFile, logged, world.rules.holdoutProbability, world.rules.escalationProbability)
         val estimate = ipsEstimates(world, logged, seed = 1)
@@ -141,6 +161,7 @@ private fun runGrid(
     source: DecisionSource,
     perDay: Double,
     seeds: Int,
+    prior: BanditPrior,
 ) {
     val configurations =
         listOf(RulesPolicy.V4) +
@@ -155,17 +176,17 @@ private fun runGrid(
                     }
                 }
             }
-    println("\nGrid over $seeds seeds; IPS read at $GRID_IPS_DECISIONS decisions")
+    println("\nGrid over $seeds seeds; IPS read at $GRID_IPS_DECISIONS decisions; ${describe(prior)}")
     println(
         "  holdout  neighbour  forced   go live  days   gain@1000  supported   IPS bias  IPS sd  " +
             "SNIPS bias  SNIPS sd   forced/week",
     )
     for (rules in configurations) {
         val world = World(user, source, rules, restrictBandit = rules.explores)
-        val shadow = shadowStudy(world, seeds, SHADOW_CHECKPOINTS)
+        val shadow = shadowStudy(world, seeds, SHADOW_CHECKPOINTS, prior = prior)
         val goLive = goLiveDecisions(shadow)
-        val gain = median(shadow.filter { it.decisions == 1000 }.map { it.bandit - it.rules })
-        val ips = ipsStudy(world, seeds, listOf(GRID_IPS_DECISIONS))
+        val gain = median(shadow.filter { it.decisions == 1000 }.map { it.bandit - it.ladder })
+        val ips = ipsStudy(world, seeds, listOf(GRID_IPS_DECISIONS), prior = prior)
         val ipsErrors = ips.map { it.ips - it.trueValue }
         val snipsErrors = ips.map { it.selfNormalized - it.trueValue }.filter { !it.isNaN() }
         val supported = median(ips.map { it.supported.toDouble() / it.decisions })
@@ -193,6 +214,46 @@ private fun runGrid(
     }
 }
 
+/**
+ * The same rules with priors of growing precision: how soon the shadow gets ahead, and how well the
+ * bandit does once live, at the end of the online study.
+ */
+private fun runPriorGrid(
+    world: World,
+    perDay: Double,
+    seeds: Int,
+    base: BanditPrior,
+) {
+    println("\nPrior grid over $seeds seeds; prior benefit ${f(base.priorBenefit)}, noise sd ${f(base.noiseSd)}")
+    println("  precision  weight sd   go live  days   gain@1000   live regret  ladder regret")
+    for (precision in PRIOR_PRECISIONS) {
+        val prior = base.copy(priorPrecision = precision)
+        val shadow = shadowStudy(world, seeds, SHADOW_CHECKPOINTS, prior = prior)
+        val goLive = goLiveDecisions(shadow)
+        val gain = median(shadow.filter { it.decisions == 1000 }.map { it.bandit - it.ladder })
+        // The live bandit once settled: its last 300 decisions.
+        val settled =
+            onlineStudy(world, seeds, ONLINE_DECISIONS, prior = prior).filter {
+                it.decisions >
+                    ONLINE_DECISIONS - 300
+            }
+        val columns =
+            listOf(
+                f1(precision).padStart(9),
+                f(1 / sqrt(precision)).padStart(9),
+                (goLive?.toString() ?: "never").padStart(8),
+                (goLive?.let { (it / perDay).toInt().toString() } ?: "-").padStart(5),
+                f(gain).padStart(10),
+                f(median(settled.map { it.banditRegret })).padStart(12),
+                f(median(settled.map { it.ladderRegret })).padStart(13),
+            )
+        println("  " + columns.joinToString(" "))
+    }
+}
+
+private fun describe(prior: BanditPrior) =
+    "prior benefit ${f(prior.priorBenefit)}, prior precision ${f1(prior.priorPrecision)}, noise sd ${f(prior.noiseSd)}"
+
 private fun describe(rules: RulesPolicy) =
     "holdout ${pct(rules.holdoutProbability)}, escalation ${pct(rules.escalationProbability)}, " +
         "neighbour level ${pct(rules.neighbourProbability)}, forced close ${pct(rules.forcedCloseProbability)}"
@@ -209,11 +270,11 @@ private fun printCalibration(calibration: Calibration) {
     )
 }
 
-/** The first checkpoint from which the bandit stays ahead of the rules in enough seeds, if any. */
+/** The first checkpoint from which the bandit stays ahead of the ladder in enough seeds, if any. */
 private fun goLiveDecisions(points: List<ShadowPoint>): Int? {
     val shares =
         points.groupBy { it.decisions }.toSortedMap().map { (decisions, group) ->
-            decisions to group.count { it.bandit > it.rules }.toDouble() / group.size
+            decisions to group.count { it.bandit > it.ladder }.toDouble() / group.size
         }
     val first = shares.indices.firstOrNull { i -> shares.drop(i).all { it.second >= GO_LIVE_SHARE } }
     return first?.let { shares[it].first }
@@ -224,15 +285,16 @@ private fun printShadow(
     perDay: Double,
 ) {
     println("\nShadow: the bandit trained on the rules' decisions, judged as if it went live")
-    println("  decisions  days   bandit  rules   best   bandit ahead")
+    println("  decisions  days   bandit  rules  ladder   best   ahead of the ladder")
     points.groupBy { it.decisions }.toSortedMap().forEach { (decisions, group) ->
-        val share = group.count { it.bandit > it.rules }.toDouble() / group.size
+        val share = group.count { it.bandit > it.ladder }.toDouble() / group.size
         val columns =
             listOf(
                 decisions.toString().padStart(9),
                 (decisions / perDay).toInt().toString().padStart(5),
                 f(median(group.map { it.bandit })).padStart(7),
                 f(median(group.map { it.rules })).padStart(6),
+                f(median(group.map { it.ladder })).padStart(6),
                 f(median(group.map { it.best })).padStart(6),
                 "${pct(share)} of seeds".padStart(14),
             )
@@ -251,11 +313,11 @@ private fun printShadow(
 
 private fun printOnline(points: List<OnlinePoint>) {
     println("\nOnline: the bandit live from the start, regret per decision (lower is better)")
-    println("  decisions  bandit   rules")
+    println("  decisions  bandit  ladder")
     points.groupBy { it.decisions }.toSortedMap().forEach { (decisions, group) ->
         println(
             "  ${decisions.toString().padStart(9)}  ${f(median(group.map { it.banditRegret }))}   " +
-                f(median(group.map { it.rulesRegret })),
+                f(median(group.map { it.ladderRegret })),
         )
     }
 }

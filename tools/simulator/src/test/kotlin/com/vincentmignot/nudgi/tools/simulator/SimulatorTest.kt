@@ -54,14 +54,14 @@ class SimulatorTest {
 
         val distribution = RulesPolicy.V5.distribution(overlay).mapValues { Math.round(it.value * 1000) / 1000.0 }
 
-        // Shown 70%: the overlay 75% of that, a neighbour 10% each, a forced close 5%.
+        // Shown 80%: the overlay 65% of that, a neighbour 15% each, a forced close 5%.
         assertEquals(
             mapOf(
-                BanditAction.Nothing to 0.3,
-                BanditAction.Notification to 0.07,
-                BanditAction.Overlay to 0.525,
-                BanditAction.CountdownOverlay to 0.07,
-                BanditAction.ForcedClose to 0.035,
+                BanditAction.Nothing to 0.2,
+                BanditAction.Notification to 0.12,
+                BanditAction.Overlay to 0.52,
+                BanditAction.CountdownOverlay to 0.12,
+                BanditAction.ForcedClose to 0.04,
             ),
             distribution,
         )

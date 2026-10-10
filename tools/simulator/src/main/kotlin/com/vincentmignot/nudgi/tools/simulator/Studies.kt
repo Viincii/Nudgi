@@ -31,8 +31,25 @@ class World(
 
     fun bestReward(decision: SimDecision): Double = decision.allowed.maxOf { reward(decision, it) }
 
-    fun rulesReward(decision: SimDecision): Double =
-        rules.distribution(decision).entries.sumOf { (action, probability) -> probability * reward(decision, action) }
+    fun rulesReward(decision: SimDecision): Double = expectedReward(rules, decision)
+
+    fun ladderReward(decision: SimDecision): Double = expectedReward(RulesPolicy.LADDER, decision)
+
+    private fun expectedReward(
+        policy: RulesPolicy,
+        decision: SimDecision,
+    ): Double =
+        policy.distribution(decision).entries.sumOf { (action, probability) -> probability * reward(decision, action) }
+}
+
+/** The bandit's prior and noise (decision 0020); the defaults are those the app ships. */
+data class BanditPrior(
+    val priorBenefit: Double = 0.5,
+    val priorPrecision: Double = 4.0,
+    val noiseSd: Double = 0.3,
+) {
+    fun bandit(propensityDraws: Int = 1) =
+        LinearThompsonSampling(priorBenefit, priorPrecision, noiseSd, propensityDraws)
 }
 
 /** One decision as the app records it: the rules acted, the shadow chose, the user reacted. */
@@ -76,21 +93,25 @@ data class ShadowPoint(
     val decisions: Int,
     /** Expected reward per decision of the bandit trained on [decisions] rules' decisions, were it live. */
     val bandit: Double,
+    /** The rules collecting the data, exploration included. */
     val rules: Double,
+    /** The ladder alone, which the bandit has to beat to go live: see [RulesPolicy.LADDER]. */
+    val ladder: Double,
     val best: Double,
 )
 
 /**
  * When to go live: the bandit is trained, as a shadow, on decisions the rules took, then judged on
- * fresh decisions by the expected reward of its choices against the rules'.
+ * fresh decisions by the expected reward of its choices against the ladder's.
  */
 fun shadowStudy(
     world: World,
     seeds: Int,
     checkpoints: List<Int>,
     evaluated: Int = 200,
+    prior: BanditPrior = BanditPrior(),
 ): List<ShadowPoint> {
-    val bandit = LinearThompsonSampling(propensityDraws = 1)
+    val bandit = prior.bandit()
     return (1..seeds).flatMap { seed ->
         val random = Random(seed)
         val history = mutableListOf<Observation>()
@@ -115,6 +136,7 @@ fun shadowStudy(
                             )
                         }.average(),
                 rules = judged.map(world::rulesReward).average(),
+                ladder = judged.map(world::ladderReward).average(),
                 best = judged.map(world::bestReward).average(),
             )
         }
@@ -126,7 +148,7 @@ data class OnlinePoint(
     /** Decisions taken so far; the regrets are averaged over the [block][onlineStudy] ending here. */
     val decisions: Int,
     val banditRegret: Double,
-    val rulesRegret: Double,
+    val ladderRegret: Double,
 )
 
 /** The bandit live from its first decision, learning only from its own choices. */
@@ -135,14 +157,15 @@ fun onlineStudy(
     seeds: Int,
     decisions: Int,
     block: Int = 100,
+    prior: BanditPrior = BanditPrior(),
 ): List<OnlinePoint> {
-    val bandit = LinearThompsonSampling(propensityDraws = 1)
+    val bandit = prior.bandit()
     return (1..seeds).flatMap { seed ->
         val random = Random(seed)
         val history = mutableListOf<Observation>()
         val points = mutableListOf<OnlinePoint>()
         var banditRegret = 0.0
-        var rulesRegret = 0.0
+        var ladderRegret = 0.0
         for (step in 1..decisions) {
             val decision = world.source.next(random)
             val action = bandit.choose(decision.context, world.allowed(decision), history, random).action
@@ -150,11 +173,11 @@ fun onlineStudy(
             history += Observation(decision.context, action, world.user.benefit(decision.context, outcome))
             val best = world.bestReward(decision)
             banditRegret += best - world.reward(decision, action)
-            rulesRegret += best - world.rulesReward(decision)
+            ladderRegret += best - world.ladderReward(decision)
             if (step % block == 0) {
-                points += OnlinePoint(seed, step, banditRegret / block, rulesRegret / block)
+                points += OnlinePoint(seed, step, banditRegret / block, ladderRegret / block)
                 banditRegret = 0.0
-                rulesRegret = 0.0
+                ladderRegret = 0.0
             }
         }
         points
@@ -205,8 +228,9 @@ fun ipsStudy(
     world: World,
     seeds: Int,
     checkpoints: List<Int>,
+    prior: BanditPrior = BanditPrior(),
 ): List<IpsPoint> {
-    val bandit = LinearThompsonSampling(propensityDraws = 1)
+    val bandit = prior.bandit()
     return (1..seeds).flatMap { seed ->
         val logged = runShadow(world, bandit, checkpoints.max(), Random(seed))
         checkpoints.sorted().map { ipsEstimates(world, logged.take(it), seed) }
