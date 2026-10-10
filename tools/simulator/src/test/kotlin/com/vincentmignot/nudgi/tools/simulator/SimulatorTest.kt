@@ -3,6 +3,7 @@ package com.vincentmignot.nudgi.tools.simulator
 import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.bandit.LinearThompsonSampling
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -47,6 +48,39 @@ class SimulatorTest {
     }
 
     @Test
+    fun `the exploration of rules_v5 moves a level up or down and sometimes closes the app`() {
+        val base = SyntheticDecisions.next(Random(1)).context
+        val overlay = SimDecision(base.copy(ruleId = "long_session", frictionLevelReached = 1), requestedLevel = 1)
+
+        val distribution = RulesPolicy.V5.distribution(overlay).mapValues { Math.round(it.value * 1000) / 1000.0 }
+
+        // Shown 70%: the overlay 75% of that, a neighbour 10% each, a forced close 5%.
+        assertEquals(
+            mapOf(
+                BanditAction.Nothing to 0.3,
+                BanditAction.Notification to 0.07,
+                BanditAction.Overlay to 0.525,
+                BanditAction.CountdownOverlay to 0.07,
+                BanditAction.ForcedClose to 0.035,
+            ),
+            distribution,
+        )
+    }
+
+    @Test
+    fun `every action has a chance under rules_v5 whatever the level reached`() {
+        val random = Random(4)
+        repeat(200) {
+            val decision = SyntheticDecisions.next(random)
+            val distribution = RulesPolicy.V5.distribution(decision)
+
+            assertEquals(1.0, distribution.values.sum(), 1e-9)
+            assertTrue(BanditAction.ForcedClose in distribution)
+            assertEquals(decision.isFollowUp, BanditAction.Nothing !in distribution)
+        }
+    }
+
+    @Test
     fun `the calibration recovers the stop probabilities it was simulated with`() {
         val random = Random(2)
         val truth = Scenario.CalibratedLow.user(Calibration.DEFAULT, aftermath)
@@ -56,7 +90,7 @@ class SimulatorTest {
                 val decision = world.source.next(random)
                 val action = world.rules.sample(decision, random)
                 val benefit = truth.benefit(decision.context, truth.sample(decision.context, action, random))
-                ExportedDecision(decision, action, benefit)
+                ExportedDecision(timestamp = 0, decision, action, benefit)
             }
 
         val fitted = Calibration.fit(decisions, aftermath)

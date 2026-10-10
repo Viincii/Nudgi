@@ -34,6 +34,7 @@ private val NEVER_WATCHED = setOf("com.google.android.apps.messaging")
 
 /** A real decision of an export, with what the rules did and its benefit once its window has closed. */
 data class ExportedDecision(
+    val timestamp: Long,
     val decision: SimDecision,
     val action: BanditAction,
     val benefit: Double?,
@@ -118,6 +119,7 @@ fun readExport(
         val closed = exportedAt >= timestamp + RewardV1.windowMs(hour) + MERGE_GAP_MS
         val excluded = metadata.string("nudge_id") in excludedIds
         ExportedDecision(
+            timestamp = timestamp,
             decision =
                 SimDecision(
                     context,
@@ -179,3 +181,9 @@ private fun JsonObject.string(key: String): String? =
 private fun JsonObject.long(key: String): Long? = this[key]?.jsonPrimitive?.longOrNull
 
 private fun JsonObject.int(key: String): Int? = this[key]?.jsonPrimitive?.intOrNull
+
+/** Decisions per day over the span of [decisions], to turn simulated decisions into days. */
+fun decisionsPerDay(decisions: List<ExportedDecision>): Double {
+    val days = (decisions.maxOf { it.timestamp } - decisions.minOf { it.timestamp }) / 86_400_000.0
+    return if (days > 0) decisions.size / days else DECISIONS_PER_DAY.toDouble()
+}

@@ -14,8 +14,16 @@ const val DECISIONS_PER_DAY = 13
 class World(
     val user: SimulatedUser,
     val source: DecisionSource,
-    val rules: RulesPolicy = RulesPolicy(),
+    val rules: RulesPolicy = RulesPolicy.V4,
+    /**
+     * Whether the bandit only chooses among the actions the rules can take, so that every choice
+     * it makes can be evaluated from the rules' data, and learned from.
+     */
+    val restrictBandit: Boolean = false,
 ) {
+    fun allowed(decision: SimDecision): Set<BanditAction> =
+        if (restrictBandit) decision.allowed intersect rules.support(decision) else decision.allowed
+
     fun reward(
         decision: SimDecision,
         action: BanditAction,
@@ -54,7 +62,7 @@ fun runShadow(
     val history = mutableListOf<Observation>()
     return List(count) {
         val decision = world.source.next(random)
-        val shadow = bandit.choose(decision.context, decision.allowed, history, random)
+        val shadow = bandit.choose(decision.context, world.allowed(decision), history, random)
         val action = world.rules.sample(decision, random)
         val outcome = world.user.sample(decision.context, action, random)
         val benefit = world.user.benefit(decision.context, outcome)
@@ -103,7 +111,7 @@ fun shadowStudy(
                         .map {
                             world.reward(
                                 it,
-                                fitted.choose(it.context, it.allowed, random).action,
+                                fitted.choose(it.context, world.allowed(it), random).action,
                             )
                         }.average(),
                 rules = judged.map(world::rulesReward).average(),
@@ -137,7 +145,7 @@ fun onlineStudy(
         var rulesRegret = 0.0
         for (step in 1..decisions) {
             val decision = world.source.next(random)
-            val action = bandit.choose(decision.context, decision.allowed, history, random).action
+            val action = bandit.choose(decision.context, world.allowed(decision), history, random).action
             val outcome = world.user.sample(decision.context, action, random)
             history += Observation(decision.context, action, world.user.benefit(decision.context, outcome))
             val best = world.bestReward(decision)
