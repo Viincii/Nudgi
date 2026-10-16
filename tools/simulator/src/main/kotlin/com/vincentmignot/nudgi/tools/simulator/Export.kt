@@ -4,6 +4,7 @@ import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.bandit.BanditContext
 import com.vincentmignot.nudgi.core.bandit.RewardV1
 import com.vincentmignot.nudgi.core.bandit.UsageInterval
+import com.vincentmignot.nudgi.core.bandit.WatchedUsage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -65,7 +66,7 @@ fun readExport(
     val sorted = events.sortedWith(compareBy({ it.long("timestamp") }, { it.long("id") }))
     val nudged = sorted.filter { it.isDecision() }.mapNotNull { it.string("package_name") }.toSet()
     val watched = (nudged + KNOWN_FEED_APPS) - NEVER_WATCHED
-    val intervals = watchedIntervals(sorted, watched, exportedAt)
+    val intervals = WatchedUsage(watchedIntervals(sorted, watched, exportedAt))
     val seenCooldowns = mutableSetOf<List<Any?>>()
 
     return sorted.filter { it.isDecision() }.mapNotNull { event ->

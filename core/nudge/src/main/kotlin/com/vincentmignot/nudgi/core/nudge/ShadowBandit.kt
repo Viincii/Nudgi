@@ -6,6 +6,7 @@ import com.vincentmignot.nudgi.core.bandit.LinearThompsonSampling
 import com.vincentmignot.nudgi.core.bandit.Observation
 import com.vincentmignot.nudgi.core.bandit.RewardV1
 import com.vincentmignot.nudgi.core.bandit.UsageInterval
+import com.vincentmignot.nudgi.core.bandit.WatchedUsage
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_RESPONSE
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SHOWN
@@ -104,7 +105,7 @@ fun banditObservations(
     isWatched: (String) -> Boolean,
     config: NudgeConfig,
 ): List<Observation> {
-    val watched = watchedIntervals(events, now, isWatched, config)
+    val watched = WatchedUsage(watchedIntervals(events, now, isWatched, config))
     val snoozes =
         events.filter { event ->
             event.eventType == EVENT_TYPE_NUDGE_RESPONSE &&
