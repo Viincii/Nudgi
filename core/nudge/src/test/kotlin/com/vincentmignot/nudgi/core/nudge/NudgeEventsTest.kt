@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_OUTCOME
 import com.vincentmignot.nudgi.core.database.EventEntity
 import kotlinx.serialization.json.Json
@@ -53,10 +54,10 @@ class NudgeEventsTest {
         val json = Json.parseToJsonElement(event.metadata).jsonObject
 
         assertEquals("nudge_suppressed", event.eventType)
-        assertEquals("rules_v4", json.getValue("policy_id").jsonPrimitive.content)
+        assertEquals("rules_v5", json.getValue("policy_id").jsonPrimitive.content)
         assertEquals("daily_budget", json.getValue("rule_id").jsonPrimitive.content)
         assertEquals("holdout", json.getValue("reason").jsonPrimitive.content)
-        assertEquals("0.5", json.getValue("holdout_probability").jsonPrimitive.content)
+        assertEquals("0.2", json.getValue("holdout_probability").jsonPrimitive.content)
         val snapshot = json.getValue("context").jsonObject
         assertEquals("1500000", snapshot.getValue("session_ms").jsonPrimitive.content)
         assertEquals("4200000", snapshot.getValue("daily_ms").jsonPrimitive.content)
@@ -90,6 +91,48 @@ class NudgeEventsTest {
         assertEquals(0.8, metadata.escalationProbability)
         assertEquals(false, metadata.frictionPaused)
         assertEquals("service_unavailable", metadata.frictionFallback)
+    }
+
+    @Test
+    fun `decision metadata records the exploration and the level the ladder counts`() {
+        val candidate = NudgeCandidate(NudgeRule.LongSession, 1, 20 * MINUTE_MS)
+        val friction =
+            FrictionDecision(
+                requested = FrictionLevel.Overlay,
+                applied = FrictionLevel.ForcedClose,
+                paused = false,
+                explored = FrictionExploration.ForcedClose,
+                ladder = FrictionLevel.Overlay,
+            )
+        val probabilities = mapOf(BanditAction.Nothing to 0.2, BanditAction.ForcedClose to 0.8)
+
+        val event =
+            decisionEvent(
+                NudgeDecision.Show(candidate),
+                friction,
+                context,
+                config,
+                "n1",
+                actionProbabilities = probabilities,
+            )
+        val metadata = NudgeJson.decodeFromString<NudgeDecisionMetadata>(event.metadata)
+
+        assertEquals(mapOf("nothing" to 0.2, "forced_close" to 0.8), metadata.actionProbabilities)
+        assertEquals("forced_close", metadata.explored)
+        assertEquals(1, metadata.ladderFrictionLevel)
+        val past = pastNudges(listOf(event)).single()
+        assertEquals(FrictionLevel.ForcedClose, past.frictionLevel)
+        assertEquals(FrictionLevel.Overlay, past.ladderLevel)
+    }
+
+    @Test
+    fun `an unexplored decision records no ladder level of its own`() {
+        val candidate = NudgeCandidate(NudgeRule.LongSession, 1, 20 * MINUTE_MS)
+
+        val event = decisionEvent(NudgeDecision.Show(candidate), NOTIFICATION, context, config, "n1")
+
+        assertNull(NudgeJson.decodeFromString<NudgeDecisionMetadata>(event.metadata).ladderFrictionLevel)
+        assertEquals(FrictionLevel.Notification, pastNudges(listOf(event)).single().ladderLevel)
     }
 
     @Test

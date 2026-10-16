@@ -178,7 +178,7 @@ class NudgeRulesTest {
 
     @Test
     fun `decide holds out a nudge when the draw falls under the holdout probability`() {
-        val decision = decideNudge(context(sessionMs = 20 * MINUTE), config, holdoutDraw = 0.45)
+        val decision = decideNudge(context(sessionMs = 20 * MINUTE), config, holdoutDraw = 0.15)
 
         assertEquals(SuppressionReason.Holdout, (decision as NudgeDecision.Suppress).reason)
     }

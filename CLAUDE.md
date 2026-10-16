@@ -122,5 +122,6 @@ the day; interventions show a coach expression drawn at random for now (see `doc
 
 ## Next up
 
-- Let the shadow bandit collect a few weeks of choices, then score it with `tools/bandit_report.py` and decide
-  whether it goes live.
+- Let `rules_v5` and the shadow `lin_ts_v2` collect a few weeks of decisions, then decide whether the bandit goes
+  live: the simulator calibrated on the latest export must put it ahead of the ladder in 80% of seeds, and
+  `tools/bandit_report.py` must not show it clearly worse (see `docs/decisions/0023`).

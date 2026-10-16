@@ -19,10 +19,11 @@ data class NudgeConfig(
     val snoozeMs: Long = 5 * MINUTE_MS,
     val cooldownMs: Long = 10 * MINUTE_MS,
     /**
-     * High on purpose while Nudgi collects data for the model: half of the nudges that would be
-     * shown form the control group, so the effect of a nudge can be measured within weeks.
+     * High on purpose while Nudgi collects data for the model: a fifth of the nudges that would be
+     * shown form the control group. Lowered from a half once the levels needed the data more
+     * (decision 0023).
      */
-    val holdoutProbability: Double = 0.5,
+    val holdoutProbability: Double = 0.2,
     val outcomeWindowMs: Long = 10 * MINUTE_MS,
     /** Foreground pieces of one app separated by less than this count as one session. */
     val sessionMergeGapMs: Long = MINUTE_MS,
@@ -32,6 +33,10 @@ data class NudgeConfig(
     val frictionCountdownMs: Long = 10_000L,
     /** Probability that a higher friction level asked for by the rules is actually applied. */
     val escalationProbability: Double = 0.8,
+    /** Probability that a shown nudge moves to a level next to the ladder's (decision 0023). */
+    val neighbourProbability: Double = 0.3,
+    /** Probability that a shown nudge below a forced close becomes one (decision 0023). */
+    val forcedCloseProbability: Double = 0.05,
     val frictionPauseMs: Long = 60 * MINUTE_MS,
     /** Nudgi's expressions an intervention is drawn among, uniformly (decision 0021). */
     val coachExpressions: List<CoachExpression> = CoachExpression.entries,

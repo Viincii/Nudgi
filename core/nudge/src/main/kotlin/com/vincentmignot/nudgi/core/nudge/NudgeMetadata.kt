@@ -12,9 +12,9 @@ import kotlinx.serialization.json.Json
  * whenever the way decisions are taken changes, so the data of each policy can be told apart. Rows
  * recorded before the field existed have none; they were taken by `rules_v1`, the rules without
  * friction. `rules_v2` added friction, `rules_v3` a 50% holdout and no daily cap, `rules_v4` a
- * random coach expression.
+ * random coach expression, `rules_v5` a 20% holdout and the exploration of the friction levels.
  */
-const val RULES_POLICY_ID = "rules_v4"
+const val RULES_POLICY_ID = "rules_v5"
 
 /** Metadata of `nudge_shown` and `nudge_suppressed`. */
 @Serializable
@@ -44,6 +44,17 @@ data class NudgeDecisionMetadata(
     /** Nudgi's expression in the intervention; null when nothing was shown, or on a forced close. */
     val expression: String? = null,
     @SerialName("expression_probability") val expressionProbability: Double? = null,
+    /**
+     * The probability of every action under the rules for this decision, by bandit action id, after
+     * the holdout, the escalation, the exploration and any pause; actions they could not take are
+     * left out. Null on rows recorded before `rules_v5`, whose propensities are recomputed from
+     * [holdoutProbability] and [escalationProbability].
+     */
+    @SerialName("action_probabilities") val actionProbabilities: Map<String, Double>? = null,
+    /** What the exploration did to the level; null when it left it alone. See FrictionExploration. */
+    val explored: String? = null,
+    /** The level the ladder counts this nudge at, when the exploration moved it; else [frictionLevel]. */
+    @SerialName("ladder_friction_level") val ladderFrictionLevel: Int? = null,
 )
 
 @Serializable
