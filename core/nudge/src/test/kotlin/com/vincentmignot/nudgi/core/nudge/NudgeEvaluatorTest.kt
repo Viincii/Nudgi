@@ -97,12 +97,16 @@ private class FakeShadow : ShadowPolicy {
     var failure: Exception? = null
     val supports = mutableListOf<Set<BanditAction>>()
 
+    /** Called as the shadow starts choosing, to see what had already happened. */
+    var onChoose: () -> Unit = {}
+
     override suspend fun choose(
         context: NudgeContext,
         candidate: NudgeCandidate,
         support: Set<BanditAction>,
         zone: java.time.ZoneId,
     ): ShadowMetadata {
+        onChoose()
         failure?.let { throw it }
         supports += support
         return ShadowMetadata(policyId = "test", action = "overlay", propensity = 0.3, trainedOn = 7)
@@ -389,5 +393,18 @@ class NudgeEvaluatorTest {
             assertEquals(EVENT_TYPE_NUDGE_SUPPRESSED, decisions().last().eventType)
             assertNull(lastDecision().explored)
             assertEquals(0, lastDecision().frictionLevel)
+        }
+
+    @Test
+    fun `the nudge is shown before the shadow chooses`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+            var shownBeforeShadow = -1
+            shadow.onChoose = { shownBeforeShadow = notifier.shown.size }
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(1, shownBeforeShadow)
+            assertEquals(ShadowMetadata("test", "overlay", 0.3, 7), lastDecision().shadow)
         }
 }

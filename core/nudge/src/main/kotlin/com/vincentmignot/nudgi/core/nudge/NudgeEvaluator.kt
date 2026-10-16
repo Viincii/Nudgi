@@ -30,8 +30,10 @@ class RandomHoldoutDraw
  * window has closed, then the decision for the app in the foreground, and shows the nudge if that
  * decision is to show one, as a notification or with the friction the app has reached.
  *
- * Friction is applied before the decision is recorded, so a nudge whose overlay could not be shown
- * is recorded as the notification it fell back to.
+ * The nudge is shown before the decision is recorded, so a nudge whose overlay could not be shown
+ * is recorded as the notification it fell back to, and the shadow bandit's choice, which is recorded
+ * with the decision, never delays it. A response cannot be lost meanwhile: it is matched to its
+ * decision by id, whatever the order the two rows land in.
  */
 class NudgeEvaluator
     @Inject
@@ -89,11 +91,13 @@ class NudgeEvaluator
                     null
                 }
 
+            if (shown != null && notifies) notifier.show(nudgeId, candidate, context, shown)
+
+            // The shadow refits on the whole history and never acts, so it comes after the nudge.
             val shadow = shadowChoice(context, candidate, probabilities.keys, zone)
             eventDao.insert(
                 decisionEvent(decision, friction, context, config, nudgeId, shadow, shown, probabilities),
             )
-            if (shown != null && notifies) notifier.show(nudgeId, candidate, context, shown)
             return nextEvaluationAt(context.including(decision, friction, nudgeId), config, zone)
         }
 
