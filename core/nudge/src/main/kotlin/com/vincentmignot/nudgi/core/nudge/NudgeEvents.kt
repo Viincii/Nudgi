@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_BACKGROUND
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_APP_FOREGROUND
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_OUTCOME
@@ -36,6 +37,7 @@ fun decisionEvent(
     nudgeId: String,
     shadow: ShadowMetadata? = null,
     expression: CoachExpression? = null,
+    actionProbabilities: Map<BanditAction, Double>? = null,
 ): EventEntity {
     val (eventType, candidate, reason) =
         when (decision) {
@@ -62,6 +64,9 @@ fun decisionEvent(
             frictionFallback = friction.fallback?.id,
             expression = expression?.id,
             expressionProbability = expression?.let { expressionProbability(config) },
+            actionProbabilities = actionProbabilities?.mapKeys { it.key.id },
+            explored = friction.explored?.id,
+            ladderFrictionLevel = friction.ladder.takeIf { it != friction.applied }?.value,
         )
     return EventEntity(
         timestamp = context.now,

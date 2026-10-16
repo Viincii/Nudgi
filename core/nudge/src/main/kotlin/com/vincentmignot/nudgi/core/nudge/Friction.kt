@@ -27,6 +27,15 @@ enum class FrictionFallback(
     ServiceUnavailable("service_unavailable"),
 }
 
+/** What the exploration of `rules_v5` did to a shown nudge's level (decision 0023). [id] is what `events` records. */
+enum class FrictionExploration(
+    val id: String,
+) {
+    /** Moved to the level below or above the ladder's. */
+    Neighbour("neighbour"),
+    ForcedClose("forced_close"),
+}
+
 /** The level [packageName][NudgeContext.packageName] has reached today, and the snoozes taken at it. */
 data class FrictionState(
     val level: FrictionLevel,
@@ -34,32 +43,45 @@ data class FrictionState(
 )
 
 data class FrictionDecision(
-    /** What the ladder asks for. */
+    /** What the ladder asks for: [reached], or the level above it on an escalation. */
     val requested: FrictionLevel,
-    /** What the user gets: lower than [requested] when escalation is held out, paused or unavailable. */
+    /**
+     * What the user gets: lower than [requested] when escalation is held out, paused or unavailable,
+     * and anywhere around it when explored.
+     */
     val applied: FrictionLevel,
     val paused: Boolean,
     val fallback: FrictionFallback? = null,
+    val explored: FrictionExploration? = null,
+    /**
+     * What this nudge counts for on the ladder: [applied] before any exploration. The ladder only
+     * follows its own levels, so an explored level neither raises it nor, for a forced close,
+     * restarts it.
+     */
+    val ladder: FrictionLevel = applied,
+    /** The level the app had reached before this nudge. */
+    val reached: FrictionLevel = requested,
 ) {
     fun fallingBack(reason: FrictionFallback): FrictionDecision =
-        copy(applied = FrictionLevel.Notification, fallback = reason)
+        copy(applied = FrictionLevel.Notification, ladder = FrictionLevel.Notification, fallback = reason)
 }
 
 /**
  * The ladder as the user experienced it today in the foreground app: the highest level applied to a
- * shown nudge. A forced close is one-off: the app then starts again from a countdown overlay, with
- * its snoozes counted afresh. Held-out and paused nudges applied less, so they never raise it.
+ * shown nudge by the ladder itself, explored levels aside. A forced close is one-off: the app then
+ * starts again from a countdown overlay, with its snoozes counted afresh. Held-out and paused
+ * nudges applied less, so they never raise it.
  */
 fun frictionState(context: NudgeContext): FrictionState {
     val today =
         context.pastNudges
             .filter { it.shown && it.packageName == context.packageName && it.timestamp >= context.dayStartedAt }
             .sortedBy { it.timestamp }
-    val lastClose = today.indexOfLast { it.frictionLevel == FrictionLevel.ForcedClose }
+    val lastClose = today.indexOfLast { it.ladderLevel == FrictionLevel.ForcedClose }
     val sinceClose = today.drop(lastClose + 1)
     val floor = if (lastClose >= 0) FrictionLevel.CountdownOverlay else FrictionLevel.Notification
-    val level = maxOf(floor, sinceClose.maxOfOrNull { it.frictionLevel } ?: floor)
-    val snoozes = sinceClose.count { it.frictionLevel == level && it.response == NudgeResponse.Snooze }
+    val level = maxOf(floor, sinceClose.maxOfOrNull { it.ladderLevel } ?: floor)
+    val snoozes = sinceClose.count { it.ladderLevel == level && it.response == NudgeResponse.Snooze }
     return FrictionState(level, snoozes)
 }
 
@@ -102,5 +124,50 @@ fun decideFriction(
         requested = requested,
         applied = if (paused) FrictionLevel.Notification else escalated,
         paused = paused,
+        reached = state.level,
     )
 }
+
+/**
+ * The exploration of `rules_v5` on a shown nudge (decision 0023), [draw] being a uniform draw in
+ * `[0, 1)`: the level moves to a neighbour of the ladder's with [NudgeConfig.neighbourProbability],
+ * split evenly between the one below and the one above when both exist, and becomes a forced close
+ * with [NudgeConfig.forcedCloseProbability] when it is not one already. Nothing is explored during
+ * a pause.
+ */
+fun exploreFriction(
+    friction: FrictionDecision,
+    config: NudgeConfig,
+    draw: Double,
+): FrictionDecision {
+    if (friction.paused) return friction
+    val level = friction.applied
+    val neighbours = neighbourLevels(level)
+    return when {
+        draw < config.neighbourProbability -> {
+            val index =
+                (draw / config.neighbourProbability * neighbours.size).toInt().coerceAtMost(
+                    neighbours.lastIndex,
+                )
+            friction.copy(applied = neighbours[index], explored = FrictionExploration.Neighbour, ladder = level)
+        }
+
+        level < FrictionLevel.ForcedClose && draw < config.neighbourProbability + config.forcedCloseProbability -> {
+            friction.copy(
+                applied = FrictionLevel.ForcedClose,
+                explored = FrictionExploration.ForcedClose,
+                ladder = level,
+            )
+        }
+
+        else -> {
+            friction
+        }
+    }
+}
+
+internal fun neighbourLevels(level: FrictionLevel): List<FrictionLevel> =
+    listOfNotNull(
+        FrictionLevel.entries.getOrNull(level.ordinal - 1),
+        FrictionLevel.entries.getOrNull(level.ordinal + 1),
+    )

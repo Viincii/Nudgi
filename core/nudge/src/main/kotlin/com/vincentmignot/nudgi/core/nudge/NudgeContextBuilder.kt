@@ -155,6 +155,7 @@ fun pastNudges(events: List<EventEntity>): List<PastNudge> {
         val rule = NudgeRule.fromId(metadata.ruleId) ?: return@mapNotNull null
         val packageName = event.packageName ?: return@mapNotNull null
         val response = responses[metadata.nudgeId]
+        val applied = FrictionLevel.fromValue(metadata.frictionLevel) ?: FrictionLevel.Notification
         PastNudge(
             nudgeId = metadata.nudgeId,
             timestamp = event.timestamp,
@@ -164,7 +165,8 @@ fun pastNudges(events: List<EventEntity>): List<PastNudge> {
             shown = shown,
             response = response?.first,
             respondedAt = response?.second,
-            frictionLevel = FrictionLevel.fromValue(metadata.frictionLevel) ?: FrictionLevel.Notification,
+            frictionLevel = applied,
+            ladderLevel = FrictionLevel.fromValue(metadata.ladderFrictionLevel) ?: applied,
         )
     }
 }
