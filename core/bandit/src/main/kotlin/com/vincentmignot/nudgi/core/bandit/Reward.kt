@@ -46,21 +46,15 @@ object RewardV1 {
         decidedAt: Long,
         localHour: Int,
         watched: List<UsageInterval>,
+    ): Double = benefit(decidedAt, localHour, WatchedUsage(watched))
+
+    fun benefit(
+        decidedAt: Long,
+        localHour: Int,
+        watched: WatchedUsage,
     ): Double {
-        val windowEnd = decidedAt + windowMs(localHour)
-        val clipped =
-            watched
-                .map { UsageInterval(maxOf(it.start, decidedAt), minOf(it.end, windowEnd)) }
-                .filter { it.end > it.start }
-                .sortedBy { it.start }
-        var usedMs = 0L
-        var coveredUntil = decidedAt
-        for (interval in clipped) {
-            val start = maxOf(interval.start, coveredUntil)
-            if (interval.end > start) usedMs += interval.end - start
-            coveredUntil = maxOf(coveredUntil, interval.end)
-        }
-        return 1.0 - usedMs.toDouble() / windowMs(localHour)
+        val windowMs = windowMs(localHour)
+        return 1.0 - watched.usedMs(decidedAt, decidedAt + windowMs).toDouble() / windowMs
     }
 
     fun reward(
@@ -68,4 +62,45 @@ object RewardV1 {
         localHour: Int,
         benefit: Double,
     ): Double = weight(localHour) * benefit - cost(action)
+}
+
+/**
+ * Watched-app use sorted once, so the time used in a window is found without going through all of
+ * it: scoring every decision of a long history against every interval would grow with their product.
+ */
+class WatchedUsage(
+    intervals: List<UsageInterval>,
+) {
+    private val sorted = intervals.filter { it.end > it.start }.sortedBy { it.start }
+
+    /** No interval is longer, so one ending after a time started less than this before it. */
+    private val longestMs = sorted.maxOfOrNull { it.end - it.start } ?: 0L
+
+    /** Time in `[from, until)` covered by at least one interval. */
+    fun usedMs(
+        from: Long,
+        until: Long,
+    ): Long {
+        var index = firstStartingAtOrAfter(from - longestMs)
+        var usedMs = 0L
+        var coveredUntil = from
+        while (index < sorted.size && sorted[index].start < until) {
+            val interval = sorted[index++]
+            val start = maxOf(interval.start, coveredUntil)
+            val end = minOf(interval.end, until)
+            if (end > start) usedMs += end - start
+            coveredUntil = maxOf(coveredUntil, end)
+        }
+        return usedMs
+    }
+
+    private fun firstStartingAtOrAfter(time: Long): Int {
+        var low = 0
+        var high = sorted.size
+        while (low < high) {
+            val middle = (low + high) ushr 1
+            if (sorted[middle].start < time) low = middle + 1 else high = middle
+        }
+        return low
+    }
 }
