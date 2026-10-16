@@ -111,7 +111,7 @@ class SimulatorTest {
         val logged = runShadow(world, LinearThompsonSampling(propensityDraws = 1), 200, Random(3))
         val file = folder.newFile("export.zip")
 
-        writeSyntheticExport(file, logged, holdoutProbability = 0.5, escalationProbability = 0.8)
+        writeSyntheticExport(file, logged, world)
         val read = readExport(file, excludedIds = emptySet())
 
         assertEquals(logged.map { it.rulesAction }, read.map { it.action })

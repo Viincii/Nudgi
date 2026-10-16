@@ -15,12 +15,12 @@ private val USAGE =
     |
     |Options:
     |  --export path    an export to resample decisions from and calibrate on
-    |  --rules v4|v5    the rules collecting the data (default v4); with exploration the bandit
+    |  --rules v4|v5    the rules collecting the data (default v5); with exploration the bandit
     |                   only chooses among the actions the rules can take
     |  --holdout p, --neighbour p, --forced p
     |                   override the rules' holdout, neighbour-level and forced-close probabilities
     |  --prior-precision p, --prior-benefit b, --noise-sd s
-    |                   override the bandit's prior and noise (default 4, 0.5, 0.3, as in the app)
+    |                   override the bandit's prior and noise (default 1024, 0.5, 0.3, as in the app)
     |  --grid           compare exploration rates instead of running one configuration
     |  --prior-grid     compare prior precisions under the chosen rules instead
     |  --seeds N        random seeds per study (default 30)
@@ -60,7 +60,7 @@ fun main(args: Array<String>) {
     val seeds = options["--seeds"]?.toIntOrNull() ?: 30
     val exportPath = options["--export"]?.let(::File)
     val baseRules =
-        when (options["--rules"] ?: "v4") {
+        when (options["--rules"] ?: "v5") {
             "v4" -> RulesPolicy.V4
             "v5" -> RulesPolicy.V5
             else -> fail("Unknown rules: ${options["--rules"]}")
@@ -132,22 +132,18 @@ fun main(args: Array<String>) {
         listOf(it.seed, it.decisions, it.trueValue, it.ips, it.selfNormalized, it.rulesActual, it.matches, it.supported)
     }
 
-    if (rules.explores) {
-        // bandit_report.py only knows the propensities of rules_v4; the export would mislead it.
-        println("\nNo synthetic export: the report cannot read the exploration of these rules yet.")
-    } else {
-        // One synthetic export, with the app's own propensity draws, for bandit_report.py to read.
-        val logged = runShadow(world, prior.bandit(propensityDraws = 200), EXPORT_DECISIONS, Random(1))
-        val exportFile = File(out, "synthetic-export.zip")
-        writeSyntheticExport(exportFile, logged, world.rules.holdoutProbability, world.rules.escalationProbability)
-        val estimate = ipsEstimates(world, logged, seed = 1)
-        println("\nSynthetic export: $exportFile ($EXPORT_DECISIONS decisions)")
-        println("  python3 tools/bandit_report.py $exportFile")
-        println(
-            "  should report IPS ${f(estimate.ips)}, self-normalized ${f(estimate.selfNormalized)}, " +
-                "rules ${f(estimate.rulesActual)}; the shadow's true value is ${f(estimate.trueValue)}",
-        )
-    }
+    // One synthetic export, with the app's own propensity draws, for bandit_report.py to read.
+    val logged = runShadow(world, prior.bandit(propensityDraws = 200), EXPORT_DECISIONS, Random(1))
+    val exportFile = File(out, "synthetic-export.zip")
+    writeSyntheticExport(exportFile, logged, world)
+    val estimate = ipsEstimates(world, logged, seed = 1)
+    println("\nSynthetic export: $exportFile ($EXPORT_DECISIONS decisions)")
+    println("  python3 tools/bandit_report.py $exportFile")
+    println(
+        "  should report IPS ${f(estimate.ips)}, self-normalized ${f(estimate.selfNormalized)}, " +
+            "rules ${f(estimate.rulesActual)}; the shadow's true value is ${f(estimate.trueValue)}",
+    )
+    println("  the ladder alone's true value is ${f(logged.map { world.ladderReward(it.decision) }.average())}")
     println("\nCSV files in $out")
 }
 
