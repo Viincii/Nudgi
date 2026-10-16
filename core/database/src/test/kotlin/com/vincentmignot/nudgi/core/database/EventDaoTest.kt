@@ -132,4 +132,14 @@ class EventDaoTest {
             assertEquals(listOf(2_000L), second.map { it.timestamp })
             assertEquals(emptyList<EventEntity>(), third)
         }
+
+    @Test
+    fun `betweenInclusive includes both bounds and returns rows in id order`() =
+        runTest {
+            listOf(3_000L, 999L, 1_000L, 2_000L, 3_001L).forEach { dao.insert(event(timestamp = it, eventType = "e")) }
+
+            val events = dao.betweenInclusive(startInclusive = 1_000L, endInclusive = 3_000L)
+
+            assertEquals(listOf(3_000L, 1_000L, 2_000L), events.map { it.timestamp })
+        }
 }
