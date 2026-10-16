@@ -41,6 +41,12 @@ interface EventDao {
     @Query("SELECT * FROM events ORDER BY timestamp DESC LIMIT :limit")
     suspend fun latest(limit: Int): List<EventEntity>
 
+    @Query("SELECT * FROM events WHERE timestamp >= :startInclusive AND timestamp <= :endInclusive ORDER BY id")
+    suspend fun betweenInclusive(
+        startInclusive: Long,
+        endInclusive: Long,
+    ): List<EventEntity>
+
     @Query("SELECT MAX(id) FROM events")
     suspend fun maxId(): Long?
 

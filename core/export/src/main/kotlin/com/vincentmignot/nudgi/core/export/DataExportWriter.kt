@@ -2,12 +2,7 @@ package com.vincentmignot.nudgi.core.export
 
 import com.vincentmignot.nudgi.core.database.DailyStatsEntity
 import com.vincentmignot.nudgi.core.database.EventEntity
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonPrimitive
 import java.io.OutputStream
 import java.io.Writer
 import java.util.zip.ZipEntry
@@ -16,6 +11,7 @@ import java.util.zip.ZipOutputStream
 internal const val EVENTS_FILE = "events.jsonl"
 internal const val DAILY_STATS_FILE = "daily_stats.csv"
 internal const val MANIFEST_FILE = "manifest.json"
+internal const val DAILY_STATS_HEADER = "date,package_name,usage_ms,nudge_count"
 
 private const val EVENTS_PAGE_SIZE = 1_000
 
@@ -95,7 +91,7 @@ class DataExportWriter(
         writer: Writer,
         rows: List<DailyStatsEntity>,
     ) {
-        writer.write("date,package_name,usage_ms,nudge_count\n")
+        writer.write("$DAILY_STATS_HEADER\n")
         rows.forEach { row ->
             writer.write(
                 listOf(row.date, row.packageName, row.usageMs.toString(), row.nudgeCount.toString())
@@ -112,27 +108,9 @@ class DataExportWriter(
             eventType = eventType,
             packageName = packageName,
             durationMs = durationMs,
-            metadata = parseMetadata(metadata),
+            metadata = metadataToJson(metadata),
         )
-
-    // A row that is not valid JSON is kept verbatim as a string rather than failing the whole export.
-    private fun parseMetadata(raw: String): JsonElement =
-        try {
-            json.parseToJsonElement(raw)
-        } catch (_: SerializationException) {
-            JsonPrimitive(raw)
-        }
 }
-
-@Serializable
-private data class ExportedEvent(
-    val id: Long,
-    val timestamp: Long,
-    @SerialName("event_type") val eventType: String,
-    @SerialName("package_name") val packageName: String?,
-    @SerialName("duration_ms") val durationMs: Long,
-    val metadata: JsonElement,
-)
 
 private fun ExportInfo.toManifest(summary: ExportSummary) =
     ExportManifest(

@@ -14,4 +14,18 @@
         <item quantity="other">Exported %1$d events.</item>
     </plurals>
     <string name="settings_export_failed">The export failed and no file was kept. Try again, or pick another location.</string>
+    <string name="settings_import_explanation">After reinstalling Nudgi, or on a new phone, import an export to bring that history back. Events already on this phone are kept, and those the file shares with them are not added twice.</string>
+    <string name="settings_import_button">Import data</string>
+    <string name="settings_import_in_progress">Importing…</string>
+    <plurals name="settings_import_added">
+        <item quantity="one">Imported %1$d event.</item>
+        <item quantity="other">Imported %1$d events.</item>
+    </plurals>
+    <plurals name="settings_import_already_present">
+        <item quantity="one">%1$d was already on this phone.</item>
+        <item quantity="other">%1$d were already on this phone.</item>
+    </plurals>
+    <string name="settings_import_incompatible">This export comes from another version of Nudgi and this one cannot read it. Nothing was imported.</string>
+    <string name="settings_import_not_an_export">This file is not a complete Nudgi export. Nothing was imported.</string>
+    <string name="settings_import_failed">The import failed and nothing was changed. Try again.</string>
 </resources>

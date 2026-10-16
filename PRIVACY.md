@@ -19,6 +19,9 @@ In Settings, "Export my data" writes everything above to a zip file, in a locati
 picker. Nudgi never sends that file anywhere, but once it is saved it is outside the app: if you pick a synced
 folder, it is synced like any other file there.
 
+"Import data" reads such a file back, from a location you pick the same way, and adds its events to the ones already
+on the phone. It reads nothing else and sends nothing anywhere.
+
 ## What Nudgi does not do
 
 - **No network access.** The app does not declare the `INTERNET` permission, so it cannot send data even by accident.

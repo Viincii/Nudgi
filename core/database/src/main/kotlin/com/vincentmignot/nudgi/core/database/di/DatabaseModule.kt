@@ -2,7 +2,9 @@ package com.vincentmignot.nudgi.core.database.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.withTransaction
 import com.vincentmignot.nudgi.core.database.DailyStatsDao
+import com.vincentmignot.nudgi.core.database.DatabaseTransactions
 import com.vincentmignot.nudgi.core.database.EventDao
 import com.vincentmignot.nudgi.core.database.NudgiDatabase
 import dagger.Module
@@ -28,4 +30,10 @@ object DatabaseModule {
 
     @Provides
     fun provideDailyStatsDao(database: NudgiDatabase): DailyStatsDao = database.dailyStatsDao()
+
+    @Provides
+    fun provideDatabaseTransactions(database: NudgiDatabase): DatabaseTransactions =
+        object : DatabaseTransactions {
+            override suspend fun <R> run(block: suspend () -> R): R = database.withTransaction { block() }
+        }
 }
