@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SHOWN
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SUPPRESSED
 import com.vincentmignot.nudgi.core.database.EventDao
@@ -94,13 +95,16 @@ private class FakeFrictionPresenter(
 
 private class FakeShadow : ShadowPolicy {
     var failure: Exception? = null
+    val supports = mutableListOf<Set<BanditAction>>()
 
     override suspend fun choose(
         context: NudgeContext,
         candidate: NudgeCandidate,
+        support: Set<BanditAction>,
         zone: java.time.ZoneId,
     ): ShadowMetadata {
         failure?.let { throw it }
+        supports += support
         return ShadowMetadata(policyId = "test", action = "overlay", propensity = 0.3, trainedOn = 7)
     }
 }
@@ -344,7 +348,7 @@ class NudgeEvaluatorTest {
         }
 
     @Test
-    fun `records the probability of every action`() =
+    fun `records the probability of every action and hands their support to the shadow`() =
         runTest {
             eventDao.insert(foreground(sessionStart))
 
@@ -353,6 +357,10 @@ class NudgeEvaluatorTest {
             val probabilities = lastDecision().actionProbabilities!!
             assertEquals(setOf("nothing", "notification", "overlay", "forced_close"), probabilities.keys)
             assertEquals(1.0, probabilities.values.sum(), 1e-9)
+            assertEquals(
+                setOf(BanditAction.Nothing, BanditAction.Notification, BanditAction.Overlay, BanditAction.ForcedClose),
+                shadow.supports.single(),
+            )
         }
 
     @Test

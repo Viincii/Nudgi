@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.database.EventDao
 import kotlinx.coroutines.CancellationException
 import java.time.ZoneId
@@ -88,7 +89,7 @@ class NudgeEvaluator
                     null
                 }
 
-            val shadow = shadowChoice(context, candidate, zone)
+            val shadow = shadowChoice(context, candidate, probabilities.keys, zone)
             eventDao.insert(
                 decisionEvent(decision, friction, context, config, nudgeId, shadow, shown, probabilities),
             )
@@ -100,10 +101,11 @@ class NudgeEvaluator
         private suspend fun shadowChoice(
             context: NudgeContext,
             candidate: NudgeCandidate,
+            support: Set<BanditAction>,
             zone: ZoneId,
         ): ShadowMetadata? =
             try {
-                shadowPolicy.choose(context, candidate, zone)
+                shadowPolicy.choose(context, candidate, support, zone)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {

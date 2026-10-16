@@ -20,15 +20,27 @@ import kotlin.random.Random
 
 /**
  * The shadow bandit's id: linear Thompson sampling on the features of `core:bandit`, trained on
- * [RewardV1]. Bump it whenever either changes.
+ * [RewardV1]. Bump it whenever either changes. `lin_ts_v2` only chooses among the actions the rules
+ * could take, with a tight prior (decision 0023).
  */
-const val SHADOW_POLICY_ID = "lin_ts_v1"
+const val SHADOW_POLICY_ID = "lin_ts_v2"
 
-/** Chooses what the bandit would do for a decision, without acting on it. */
+/**
+ * The precision of the prior on each weight: a standard deviation of 0.03, worth about 92
+ * observations per action at the bandit's noise. Centred on the same benefit for every action, it
+ * lets the costs decide until the data shows a costlier action pays (decision 0023).
+ */
+private const val PRIOR_PRECISION = 1024.0
+
+/**
+ * Chooses what the bandit would do for a decision, without acting on it, among [support][choose]:
+ * the actions the rules could have taken, so that every choice can be evaluated from their data.
+ */
 fun interface ShadowPolicy {
     suspend fun choose(
         context: NudgeContext,
         candidate: NudgeCandidate,
+        support: Set<BanditAction>,
         zone: ZoneId,
     ): ShadowMetadata
 }
@@ -44,22 +56,17 @@ class LinearThompsonShadow internal constructor(
     constructor(eventDao: EventDao, watchedApps: WatchedApps, config: NudgeConfig) :
         this(eventDao, watchedApps, config, Random.Default)
 
-    private val bandit = LinearThompsonSampling()
+    private val bandit = LinearThompsonSampling(priorPrecision = PRIOR_PRECISION)
 
     override suspend fun choose(
         context: NudgeContext,
         candidate: NudgeCandidate,
+        support: Set<BanditAction>,
         zone: ZoneId,
     ): ShadowMetadata {
         val observations = banditObservations(eventDao.since(0L), context.now, zone, watchedApps::isWatched, config)
-        // The user asked to be reminded, so doing nothing is not on the table.
-        val allowed =
-            if (candidate.rule == NudgeRule.SnoozeFollowUp) {
-                BanditAction.entries.toSet() - BanditAction.Nothing
-            } else {
-                BanditAction.entries.toSet()
-            }
-        val choice = bandit.choose(banditContext(context.snapshot(), candidate.rule.id), allowed, observations, random)
+        // The rules never hold out a follow-up, so the support already leaves doing nothing out there.
+        val choice = bandit.choose(banditContext(context.snapshot(), candidate.rule.id), support, observations, random)
         return ShadowMetadata(SHADOW_POLICY_ID, choice.action.id, choice.propensity, choice.trainedOn)
     }
 }
