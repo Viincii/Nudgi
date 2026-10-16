@@ -36,7 +36,7 @@ Versions live in `gradle/libs.versions.toml`. SDK levels: minSdk 31, targetSdk 3
 | `core:bandit` | The bandit reward, features and linear Thompson sampling, a plain Kotlin JVM library | nothing |
 | `core:nudge` | Rule-based nudges: rules, notification, nudge events, coach expression, the shadow bandit's choice | `core:bandit`, `core:database`, `core:mascot`, `core:usagestats` |
 | `core:today` | Today's summary and the mood derived from it, shared by the home screen and the widget | `core:database`, `core:mascot`, `core:nudge`, `core:usagestats` |
-| `core:export` | Writes the database to a zip (JSON Lines, CSV, manifest) for a user-initiated export | `core:database` |
+| `core:export` | Writes the database to a zip (JSON Lines, CSV, manifest) and merges one back, both user-initiated | `core:database`, `core:usagestats` |
 | `feature:friction` | The friction overlay drawn in the accessibility service's window, and the forced close | `core:accessibility`, `core:nudge` |
 | `feature:*` | One screen or capability each | `core:*`, never another feature |
 | `tools:simulator` | A simulated user the real bandit runs against, on the laptop; never ships (see `docs/decisions/0022`) | `core:bandit` |
@@ -124,4 +124,3 @@ the day; interventions show a coach expression drawn at random for now (see `doc
 
 - Let the shadow bandit collect a few weeks of choices, then score it with `tools/bandit_report.py` and decide
   whether it goes live.
-- Import an export back into the database (see `docs/decisions/0014`).
