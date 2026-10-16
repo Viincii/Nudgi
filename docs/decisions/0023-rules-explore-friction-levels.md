@@ -38,7 +38,9 @@ deciding the level it asks for, with its escalation applied 80% of the time. On 
   forced close anywhere (0020); it can only be judged on it if the rules sometimes do the same. That is about two
   forced closes a week. The pause in Settings remains the way out when it gets too unpleasant.
 
-A shown nudge then stays at the ladder's level 65% of the time. Snooze follow-ups keep no holdout, as before, and are
+A shown nudge then stays at the ladder's level 65% of the time. An explored level is not the ladder's: it neither
+raises the ladder nor, as a forced close, starts it again from the countdown overlay, so the ladder climbs as it would
+without exploration. A decision records the ladder's level next to the one applied when they differ. Snooze follow-ups keep no holdout, as before, and are
 explored the same way. A pause caps the applied level to a notification as before, and no exploration applies during
 it.
 

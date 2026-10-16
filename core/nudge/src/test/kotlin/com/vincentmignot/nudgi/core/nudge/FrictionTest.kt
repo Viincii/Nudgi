@@ -184,4 +184,86 @@ class FrictionTest {
 
         assertFalse(friction.paused)
     }
+
+    private fun ladderAt(
+        level: FrictionLevel,
+        paused: Boolean = false,
+    ) = FrictionDecision(
+        requested = level,
+        applied = if (paused) FrictionLevel.Notification else level,
+        paused = paused,
+    )
+
+    private fun explore(
+        level: FrictionLevel,
+        draw: Double,
+        paused: Boolean = false,
+    ) = exploreFriction(ladderAt(level, paused), config, draw)
+
+    @Test
+    fun `a notification only has the overlay above it to move to`() {
+        val explored = explore(FrictionLevel.Notification, draw = 0.01)
+
+        assertEquals(FrictionLevel.Overlay, explored.applied)
+        assertEquals(FrictionExploration.Neighbour, explored.explored)
+        assertEquals(FrictionLevel.Notification, explored.ladder)
+        assertEquals(FrictionLevel.Overlay, explore(FrictionLevel.Notification, draw = 0.29).applied)
+    }
+
+    @Test
+    fun `an overlay moves below or above it, half the time each`() {
+        assertEquals(FrictionLevel.Notification, explore(FrictionLevel.Overlay, draw = 0.14).applied)
+        assertEquals(FrictionLevel.CountdownOverlay, explore(FrictionLevel.Overlay, draw = 0.16).applied)
+    }
+
+    @Test
+    fun `a shown nudge sometimes becomes a forced close`() {
+        val explored = explore(FrictionLevel.Overlay, draw = 0.32)
+
+        assertEquals(FrictionLevel.ForcedClose, explored.applied)
+        assertEquals(FrictionExploration.ForcedClose, explored.explored)
+        assertEquals(FrictionLevel.Overlay, explored.ladder)
+    }
+
+    @Test
+    fun `most of the time the ladder's level stays`() {
+        val explored = explore(FrictionLevel.Overlay, draw = 0.35)
+
+        assertEquals(FrictionLevel.Overlay, explored.applied)
+        assertEquals(null, explored.explored)
+    }
+
+    @Test
+    fun `a forced close is only explored downwards`() {
+        assertEquals(FrictionLevel.CountdownOverlay, explore(FrictionLevel.ForcedClose, draw = 0.29).applied)
+        val kept = explore(FrictionLevel.ForcedClose, draw = 0.32)
+        assertEquals(FrictionLevel.ForcedClose, kept.applied)
+        assertEquals(null, kept.explored)
+    }
+
+    @Test
+    fun `nothing is explored during a pause`() {
+        val explored = explore(FrictionLevel.Overlay, draw = 0.01, paused = true)
+
+        assertEquals(FrictionLevel.Notification, explored.applied)
+        assertEquals(null, explored.explored)
+    }
+
+    @Test
+    fun `an explored level does not raise the ladder`() {
+        val explored = nudge(FrictionLevel.CountdownOverlay, 20).copy(ladderLevel = FrictionLevel.Notification)
+
+        assertEquals(FrictionState(FrictionLevel.Notification, 1), frictionState(context(explored)))
+    }
+
+    @Test
+    fun `an explored forced close does not restart the ladder`() {
+        val ctx =
+            context(
+                nudge(FrictionLevel.Overlay, 40),
+                nudge(FrictionLevel.ForcedClose, 30, response = null).copy(ladderLevel = FrictionLevel.Overlay),
+            )
+
+        assertEquals(FrictionState(FrictionLevel.Overlay, 1), frictionState(ctx))
+    }
 }

@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SHOWN
 import com.vincentmignot.nudgi.core.database.EVENT_TYPE_NUDGE_SUPPRESSED
 import com.vincentmignot.nudgi.core.database.EventDao
@@ -94,13 +95,16 @@ private class FakeFrictionPresenter(
 
 private class FakeShadow : ShadowPolicy {
     var failure: Exception? = null
+    val supports = mutableListOf<Set<BanditAction>>()
 
     override suspend fun choose(
         context: NudgeContext,
         candidate: NudgeCandidate,
+        support: Set<BanditAction>,
         zone: java.time.ZoneId,
     ): ShadowMetadata {
         failure?.let { throw it }
+        supports += support
         return ShadowMetadata(policyId = "test", action = "overlay", propensity = 0.3, trainedOn = 7)
     }
 }
@@ -111,7 +115,7 @@ class NudgeEvaluatorTest {
     private val frictionPresenter = FakeFrictionPresenter()
     private val shadow = FakeShadow()
 
-    /** Draws handed out in order, holdout first then escalation; 0.5 once they run out. */
+    /** Draws handed out in order: holdout, escalation, exploration, expression; 0.5 once they run out. */
     private val draws = ArrayDeque<Double>()
     private var draw: Double
         get() = error("Write only")
@@ -306,15 +310,15 @@ class NudgeEvaluatorTest {
     fun `a shown notification carries a drawn expression, recorded with its probability`() =
         runTest {
             eventDao.insert(foreground(sessionStart))
-            // Holdout, escalation, then the expression: 0.9 falls in the last third.
-            draws += listOf(0.5, 0.5, 0.9)
+            // Holdout, escalation, exploration, then the expression: 0.9 falls in the last third.
+            draws += listOf(0.5, 0.5, 0.5, 0.9)
 
             evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
 
             assertEquals(listOf(CoachExpression.Worried), notifier.expressions)
             assertEquals("worried", lastDecision().expression)
             assertEquals(1.0 / 3, lastDecision().expressionProbability!!, 1e-9)
-            assertEquals("rules_v4", lastDecision().policyId)
+            assertEquals("rules_v5", lastDecision().policyId)
         }
 
     @Test
@@ -322,7 +326,7 @@ class NudgeEvaluatorTest {
         runTest {
             twoSnoozesAgo()
             frictionPresenter.available = false
-            draws += listOf(0.5, 0.1, 0.1)
+            draws += listOf(0.5, 0.1, 0.5, 0.1)
 
             evaluator.evaluate(now = sessionStart + 33 * MINUTE_MS, zone = PARIS)
 
@@ -341,5 +345,49 @@ class NudgeEvaluatorTest {
 
             assertNull(lastDecision().expression)
             assertNull(lastDecision().expressionProbability)
+        }
+
+    @Test
+    fun `records the probability of every action and hands their support to the shadow`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            val probabilities = lastDecision().actionProbabilities!!
+            assertEquals(setOf("nothing", "notification", "overlay", "forced_close"), probabilities.keys)
+            assertEquals(1.0, probabilities.values.sum(), 1e-9)
+            assertEquals(
+                setOf(BanditAction.Nothing, BanditAction.Notification, BanditAction.Overlay, BanditAction.ForcedClose),
+                shadow.supports.single(),
+            )
+        }
+
+    @Test
+    fun `an explored forced close is presented and recorded as explored`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+            draws += listOf(0.5, 0.5, 0.32)
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(FrictionLevel.ForcedClose, frictionPresenter.presented.single().second)
+            val metadata = lastDecision()
+            assertEquals(3, metadata.frictionLevel)
+            assertEquals("forced_close", metadata.explored)
+            assertEquals(0, metadata.ladderFrictionLevel)
+        }
+
+    @Test
+    fun `a held-out nudge is not explored`() =
+        runTest {
+            eventDao.insert(foreground(sessionStart))
+            draws += listOf(0.01, 0.5, 0.01)
+
+            evaluator.evaluate(now = sessionStart + 21 * MINUTE_MS, zone = PARIS)
+
+            assertEquals(EVENT_TYPE_NUDGE_SUPPRESSED, decisions().last().eventType)
+            assertNull(lastDecision().explored)
+            assertEquals(0, lastDecision().frictionLevel)
         }
 }

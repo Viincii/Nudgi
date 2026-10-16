@@ -61,6 +61,8 @@ data class PastNudge(
     val respondedAt: Long? = null,
     /** The friction actually applied; a notification for rows recorded before friction existed. */
     val frictionLevel: FrictionLevel = FrictionLevel.Notification,
+    /** What the nudge counts for on the ladder; see [FrictionDecision.ladder]. */
+    val ladderLevel: FrictionLevel = frictionLevel,
 )
 
 /** What the rules look at: the watched app currently in the foreground and the recent history. */

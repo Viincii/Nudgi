@@ -45,7 +45,7 @@ class World(
 /** The bandit's prior and noise (decision 0020); the defaults are those the app ships. */
 data class BanditPrior(
     val priorBenefit: Double = 0.5,
-    val priorPrecision: Double = 4.0,
+    val priorPrecision: Double = 1024.0,
     val noiseSd: Double = 0.3,
 ) {
     fun bandit(propensityDraws: Int = 1) =

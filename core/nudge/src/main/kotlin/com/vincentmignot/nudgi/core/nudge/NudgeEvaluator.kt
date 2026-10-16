@@ -1,5 +1,6 @@
 package com.vincentmignot.nudgi.core.nudge
 
+import com.vincentmignot.nudgi.core.bandit.BanditAction
 import com.vincentmignot.nudgi.core.database.EventDao
 import kotlinx.coroutines.CancellationException
 import java.time.ZoneId
@@ -13,7 +14,7 @@ import kotlin.random.Random
  */
 private const val HISTORY_MS = 30 * 60 * 60 * 1000L
 
-/** A uniform draw in `[0, 1)` deciding holdouts and escalations; injected so tests can pin it. */
+/** A uniform draw in `[0, 1)` deciding holdouts, escalations and explorations; injected so tests can pin it. */
 fun interface HoldoutDraw {
     fun next(): Double
 }
@@ -60,6 +61,9 @@ class NudgeEvaluator
             var decision = decideNudge(context, config, holdoutDraw.next())
             val candidate = decision.candidate ?: return nextEvaluationAt(context, config, zone)
             var friction = decideFriction(context, candidate, config, holdoutDraw.next())
+            if (decision is NudgeDecision.Show) friction = exploreFriction(friction, config, holdoutDraw.next())
+            // Taken before the fallbacks below, which are not the rules' doing.
+            val probabilities = rulesActionProbabilities(decision, friction, config)
 
             // Drawn once, only for an intervention that shows Nudgi, and kept if an overlay falls
             // back to a notification.
@@ -85,8 +89,10 @@ class NudgeEvaluator
                     null
                 }
 
-            val shadow = shadowChoice(context, candidate, zone)
-            eventDao.insert(decisionEvent(decision, friction, context, config, nudgeId, shadow, shown))
+            val shadow = shadowChoice(context, candidate, probabilities.keys, zone)
+            eventDao.insert(
+                decisionEvent(decision, friction, context, config, nudgeId, shadow, shown, probabilities),
+            )
             if (shown != null && notifies) notifier.show(nudgeId, candidate, context, shown)
             return nextEvaluationAt(context.including(decision, friction, nudgeId), config, zone)
         }
@@ -95,10 +101,11 @@ class NudgeEvaluator
         private suspend fun shadowChoice(
             context: NudgeContext,
             candidate: NudgeCandidate,
+            support: Set<BanditAction>,
             zone: ZoneId,
         ): ShadowMetadata? =
             try {
-                shadowPolicy.choose(context, candidate, zone)
+                shadowPolicy.choose(context, candidate, support, zone)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -127,6 +134,15 @@ private fun NudgeContext.including(
             }
         }
     val decided =
-        PastNudge(nudgeId, now, packageName, candidate.rule, candidate.level, shown, frictionLevel = friction.applied)
+        PastNudge(
+            nudgeId,
+            now,
+            packageName,
+            candidate.rule,
+            candidate.level,
+            shown,
+            frictionLevel = friction.applied,
+            ladderLevel = friction.ladder,
+        )
     return copy(pastNudges = pastNudges + decided)
 }

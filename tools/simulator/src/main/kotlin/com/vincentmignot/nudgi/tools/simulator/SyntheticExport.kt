@@ -22,12 +22,15 @@ private val FIRST_DAY: LocalDate = LocalDate.of(2026, 1, 1)
  * every decision with its context, the rules' action and the shadow's choice, and watched-app use
  * around it that gives exactly the simulated benefit. Decisions are two days apart at their local
  * hour: a day apart, one at 23:30 and the next at 00:30 would share their windows.
+ *
+ * Rules that explore are written as `rules_v5`, with the probability of every action, and their
+ * shadow as `lin_ts_v2` when [world] restricts it to the rules' actions; other rules as `rules_v4`,
+ * whose propensities the report recomputes.
  */
 fun writeSyntheticExport(
     file: File,
     logged: List<LoggedDecision>,
-    holdoutProbability: Double,
-    escalationProbability: Double,
+    world: World,
 ) {
     val events = mutableListOf<Pair<Long, JsonObject>>()
 
@@ -70,7 +73,7 @@ fun writeSyntheticExport(
         event(
             t,
             if (entry.rulesAction == BanditAction.Nothing) "nudge_suppressed" else "nudge_shown",
-            metadata = decisionMetadata(index, entry, holdoutProbability, escalationProbability),
+            metadata = decisionMetadata(index, entry, world),
         )
     }
 
@@ -112,19 +115,19 @@ fun writeSyntheticExport(
 private fun decisionMetadata(
     index: Int,
     entry: LoggedDecision,
-    holdoutProbability: Double,
-    escalationProbability: Double,
+    world: World,
 ): JsonObject {
     val decision = entry.decision
     val context = decision.context
+    val rules = world.rules
     return buildJsonObject {
         put("nudge_id", "sim-${index + 1}")
-        put("policy_id", "rules_v4")
+        put("policy_id", if (rules.explores) "rules_v5" else "rules_v4")
         put("rule_id", context.ruleId)
         put("level", 1)
         put("threshold_ms", 0)
         if (entry.rulesAction == BanditAction.Nothing) put("reason", "holdout")
-        put("holdout_probability", holdoutProbability)
+        put("holdout_probability", rules.holdoutProbability)
         putJsonObject("context") {
             put("session_ms", context.sessionMs)
             put("daily_ms", context.dailyMs)
@@ -137,13 +140,18 @@ private fun decisionMetadata(
             put("friction_level_reached", context.frictionLevelReached)
         }
         putJsonObject("shadow") {
-            put("policy_id", "lin_ts_v1")
+            put("policy_id", if (world.restrictBandit) "lin_ts_v2" else "lin_ts_v1")
             put("action", entry.shadow.action.id)
             put("propensity", entry.shadow.propensity)
             put("trained_on", entry.shadow.trainedOn)
         }
         frictionLevel(entry.rulesAction)?.let { put("friction_level", it) }
         put("requested_friction_level", decision.requestedLevel)
-        put("escalation_probability", escalationProbability)
+        put("escalation_probability", rules.escalationProbability)
+        if (rules.explores) {
+            putJsonObject("action_probabilities") {
+                rules.distribution(decision).forEach { (action, probability) -> put(action.id, probability) }
+            }
+        }
     }
 }
