@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vincentmignot.nudgi.core.export.DataExporter
+import com.vincentmignot.nudgi.core.export.DataImporter
+import com.vincentmignot.nudgi.core.export.ImportException
+import com.vincentmignot.nudgi.core.export.ImportProblem
 import com.vincentmignot.nudgi.core.nudge.FrictionPause
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -20,6 +23,7 @@ class SettingsViewModel
     constructor(
         private val frictionPause: FrictionPause,
         private val dataExporter: DataExporter,
+        private val dataImporter: DataImporter,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(SettingsUiState())
         val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -51,4 +55,33 @@ class SettingsViewModel
                 _uiState.update { it.copy(export = result) }
             }
         }
+
+        /** Called with the export the user picked, or null if they backed out. */
+        fun onImportSourceChosen(source: Uri?) {
+            if (source == null || _uiState.value.import == ImportState.InProgress) return
+            _uiState.update { it.copy(import = ImportState.InProgress) }
+            viewModelScope.launch {
+                val result =
+                    try {
+                        val summary = dataImporter.importFrom(source)
+                        ImportState.Done(summary.addedCount, summary.alreadyPresentCount)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: ImportException) {
+                        ImportState.Failed(e.problem.toFailure())
+                    } catch (_: Exception) {
+                        ImportState.Failed(ImportFailure.Error)
+                    }
+                _uiState.update { it.copy(import = result) }
+            }
+        }
+    }
+
+private fun ImportProblem.toFailure(): ImportFailure =
+    when (this) {
+        is ImportProblem.UnsupportedFormat, is ImportProblem.UnsupportedSchema -> ImportFailure.Incompatible
+
+        is ImportProblem.MissingFile, ImportProblem.InvalidManifest, is ImportProblem.InvalidLine,
+        is ImportProblem.CountMismatch,
+        -> ImportFailure.NotAnExport
     }

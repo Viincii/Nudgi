@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vincentmignot.nudgi.core.designsystem.NudgiTheme
 import com.vincentmignot.nudgi.core.export.EXPORT_MIME_TYPE
+import com.vincentmignot.nudgi.core.export.IMPORT_MIME_TYPES
 import com.vincentmignot.nudgi.core.export.exportFileName
 import java.time.Instant
 import java.time.LocalDateTime
@@ -41,9 +43,15 @@ fun SettingsRoute(
             ActivityResultContracts.CreateDocument(EXPORT_MIME_TYPE),
             viewModel::onExportDestinationChosen,
         )
+    val openDocument =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+            viewModel::onImportSourceChosen,
+        )
     SettingsScreen(
         uiState = uiState,
         onExportClick = { createDocument.launch(exportFileName(LocalDateTime.now())) },
+        onImportClick = { openDocument.launch(IMPORT_MIME_TYPES) },
         onPauseFrictionClick = viewModel::onPauseFrictionClick,
         modifier = modifier,
     )
@@ -53,6 +61,7 @@ fun SettingsRoute(
 internal fun SettingsScreen(
     uiState: SettingsUiState,
     onExportClick: () -> Unit,
+    onImportClick: () -> Unit,
     onPauseFrictionClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -78,6 +87,17 @@ internal fun SettingsScreen(
                 Text(stringResource(R.string.settings_export_button))
             }
             exportStatus(uiState.export)?.let { status ->
+                Text(text = status, style = MaterialTheme.typography.bodyMedium)
+            }
+            Text(
+                text = stringResource(R.string.settings_import_explanation),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = onImportClick, enabled = uiState.import != ImportState.InProgress) {
+                Text(stringResource(R.string.settings_import_button))
+            }
+            importStatus(uiState.import)?.let { status ->
                 Text(text = status, style = MaterialTheme.typography.bodyMedium)
             }
         }
@@ -132,13 +152,47 @@ private fun exportStatus(state: ExportState): String? =
         }
     }
 
+@Composable
+private fun importStatus(state: ImportState): String? =
+    when (state) {
+        ImportState.Idle -> {
+            null
+        }
+
+        ImportState.InProgress -> {
+            stringResource(R.string.settings_import_in_progress)
+        }
+
+        is ImportState.Done -> {
+            pluralStringResource(R.plurals.settings_import_added, state.addedCount, state.addedCount) + " " +
+                pluralStringResource(
+                    R.plurals.settings_import_already_present,
+                    state.alreadyPresentCount,
+                    state.alreadyPresentCount,
+                )
+        }
+
+        is ImportState.Failed -> {
+            when (state.reason) {
+                ImportFailure.Incompatible -> stringResource(R.string.settings_import_incompatible)
+                ImportFailure.NotAnExport -> stringResource(R.string.settings_import_not_an_export)
+                ImportFailure.Error -> stringResource(R.string.settings_import_failed)
+            }
+        }
+    }
+
 @Preview(showBackground = true)
 @Composable
 private fun SettingsScreenPreview() {
     NudgiTheme {
         SettingsScreen(
-            uiState = SettingsUiState(export = ExportState.Done(eventCount = 12_345)),
+            uiState =
+                SettingsUiState(
+                    export = ExportState.Done(eventCount = 12_345),
+                    import = ImportState.Done(addedCount = 12_000, alreadyPresentCount = 345),
+                ),
             onExportClick = {},
+            onImportClick = {},
             onPauseFrictionClick = {},
         )
     }
