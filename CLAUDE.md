@@ -122,6 +122,5 @@ the day; interventions show a coach expression drawn at random for now (see `doc
 
 ## Next up
 
-- Let `rules_v5` and the shadow `lin_ts_v2` collect a few weeks of decisions, then decide whether the bandit goes
-  live: the simulator calibrated on the latest export must put it ahead of the ladder in 80% of seeds, and
-  `tools/bandit_report.py` must not show it clearly worse (see `docs/decisions/0023`).
+- Put `lin_ts_v2` live with a 10% floor of `rules_v6`, whose ladder starts at the overlay at night, behind a
+  Settings switch back to the rules; measure the decision's latency first (see `docs/decisions/0025`).
